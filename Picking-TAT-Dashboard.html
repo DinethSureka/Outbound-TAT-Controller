@@ -167,6 +167,28 @@ table.mx td.tt{font-weight:600;color:var(--text)}
 .fld select,.fld input{border:0;background:transparent;font-size:12px;padding:4px 2px;min-width:76px;outline:none}
 .fld input{min-width:190px}
 .fld:focus-within{border-color:var(--accent)}
+/* ---- multi-select filter ---- */
+.msel{position:relative}
+.mtrig{display:flex;align-items:center;gap:5px;border:0;background:transparent;cursor:pointer;
+  font-size:12px;color:var(--text);padding:4px 2px;min-width:76px;text-align:left}
+.mtrig .mlbl{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.mtrig .mlbl.on{color:var(--accent);font-weight:600}
+.mtrig .mcar{font-size:9px;color:var(--text-3)}
+.mpop{display:none;position:absolute;top:calc(100% + 6px);left:-9px;z-index:30;min-width:210px;
+  background:var(--surface);border:1px solid var(--line);border-radius:5px;
+  box-shadow:0 10px 30px rgba(0,0,0,.16);overflow:hidden}
+.msel.open .mpop{display:block}
+.mtools{display:flex;gap:4px;padding:6px 7px;border-bottom:1px solid var(--line-soft);background:var(--surface-2)}
+.mtools button{flex:1;border:1px solid var(--line);background:var(--surface);border-radius:3px;
+  padding:3px 6px;font-size:10.5px;cursor:pointer;color:var(--text-2)}
+.mtools button:hover{border-color:var(--accent);color:var(--accent)}
+.mlist{max-height:260px;overflow:auto;padding:4px 0}
+.mrow{display:flex;align-items:center;gap:7px;padding:4px 9px;cursor:pointer;font-size:12px}
+.mrow:hover{background:var(--surface-2)}
+.mrow input{accent-color:var(--accent);margin:0;flex:none}
+.mrow .mt{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mrow .mn{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--text-3);font-variant-numeric:tabular-nums}
+.mnone{padding:10px;font-size:11.5px;color:var(--text-3);text-align:center}
 .count{margin-left:auto;font-size:11.5px;color:var(--text-3)}
 .count b{color:var(--text);font-weight:600;font-family:"IBM Plex Mono",monospace}
 
@@ -668,11 +690,11 @@ tr.grouphead td{padding:0!important;background:var(--surface-2);border-bottom:1p
 
   <div class="filters">
     <div class="fld"><label for="fSearch">Find</label><input id="fSearch" type="search" placeholder="Document, wave, store, site code&hellip;"></div>
-    <div class="fld"><label for="fScenario">Scenario</label><select id="fScenario"></select></div>
-    <div class="fld"><label for="fBu">BU</label><select id="fBu"></select></div>
-    <div class="fld"><label for="fGrade">Grade</label><select id="fGrade"></select></div>
-    <div class="fld"><label for="fProc">Proc</label><select id="fProc"></select></div>
-    <div class="fld"><label for="fStatus">Status</label><select id="fStatus"></select></div>
+    <div class="fld"><label>Scenario</label><div class="msel" id="fScenario"></div></div>
+    <div class="fld"><label>BU</label><div class="msel" id="fBu"></div></div>
+    <div class="fld"><label>Grade</label><div class="msel" id="fGrade"></div></div>
+    <div class="fld"><label>Proc</label><div class="msel" id="fProc"></div></div>
+    <div class="fld"><label>Status</label><div class="msel" id="fStatus"></div></div>
     <div class="fld"><label for="fDone">Completed</label><select id="fDone"><option value="hide">Hidden</option><option value="show">Shown</option><option value="only">Only</option></select></div>
     <button class="btn ghost" id="btnClear">Clear</button>
     <span class="count" id="rowCount"></span>
@@ -987,9 +1009,13 @@ tr.grouphead td{padding:0!important;background:var(--surface-2);border-bottom:1p
       </div>
       <div class="kv">
         <label class="f"><span>Sound the tone</span><select id="optAlarmWhen">
-          <option value="out">When a document goes out of TAT</option>
+          <option value="lead">Before a document goes out of TAT, and again when it does</option>
           <option value="both">Out of TAT, and at the first warning band</option>
+          <option value="out">Only when a document goes out of TAT</option>
         </select></label>
+        <label class="f" id="leadFld"><span>How long before</span>
+          <input type="number" id="optAlarmLead" min="1" max="1440" step="5">
+          <span class="fh">Minutes of warning. A document sounds once on the way in and once on the way out.</span></label>
         <label class="f"><span>Repeat every</span><select id="optAlarmRepeat">
           <option value="0">Once per document</option>
           <option value="300000">5 minutes while still out of TAT</option>
@@ -1059,7 +1085,9 @@ function defaultConfig(){
     placeholder: true,
     dateFmt:"DMY", refSrc:"releaseElseCreated",
     bandMode:"hrs", bands:{e1:1, e2:3, e3:6}, rowFill:true,
-    alarmWhen:"out", alarmRepeat:0,
+    // A tone at the moment of breach is a tone too late to act on, so the board can
+    // also call a document out while there is still time left on it.
+    alarmWhen:"lead", alarmLead:30, alarmRepeat:0,
     sound:{out:"chime", warn:"ping", vol:0.7, mute:false},
     // Out of TAT is a backlog: it sits at the foot of the list as one block,
     // opened to document level only when someone asks.
@@ -1438,7 +1466,9 @@ function isDone(o){
 let ORDERS = [], STORES = new Map(), ALL = [], VIEW = [];
 let SRC = { orders:null, stores:null, sample:true };
 let SORT = { key:"remaining", dir:1 };
-let statusFilter = null;
+// One value per filter was never enough on a floor running two proc. types at once.
+// Each of these holds a set of accepted values; empty means no restriction at all.
+const FILT = { scenario:new Set(), bu:new Set(), grade:new Set(), procType:new Set(), bucket:new Set() };
 let OUT_OPEN = false;            // is the out-of-TAT block on the list opened to documents
 const expanded = new Set();
 
@@ -1616,25 +1646,38 @@ function playTone(kind, reps){
     }
   }catch(e){}
 }
+function alarmLeadMins(){ const v = Number(CFG.alarmLead); return Number.isFinite(v) && v > 0 ? v : 30; }
+// Which level, if any, a document should be shouting about right now. Breach always
+// wins; below it, either a fixed countdown or the first warning band, never both.
+function alarmLevel(r){
+  if(r.done || r.remaining == null) return null;
+  if(r.bucket === "out") return "out";
+  if(CFG.alarmWhen === "lead" && r.remaining <= alarmLeadMins()*60000) return "lead";
+  if(CFG.alarmWhen === "both" && r.bucket === "h1") return "h1";
+  return null;
+}
 function checkAlarms(rows){
   if(!ALARM_ON) return;
   const now = Date.now();
   const repeat = Number(CFG.alarmRepeat)||0;
-  const watch = CFG.alarmWhen === "both" ? ["out","h1"] : ["out"];
-  const fresh = { out:[], h1:[] };
+  const fresh = { out:[], lead:[], h1:[] };
   rows.forEach(r=>{
-    if(r.done || !watch.includes(r.bucket)) return;
+    const lv = alarmLevel(r);
+    if(!lv) return;
     const prev = ALARMED.get(r.doc);
-    const isNew = !prev || prev.level !== r.bucket;
-    const isRepeat = prev && prev.level === r.bucket && repeat > 0 && (now - prev.at) >= repeat;
-    if(isNew || isRepeat){ fresh[r.bucket].push(r.doc); ALARMED.set(r.doc, {level:r.bucket, at:now}); }
+    // Crossing from the countdown into the breach itself is a new thing to say.
+    const isNew = !prev || prev.level !== lv;
+    const isRepeat = prev && prev.level === lv && repeat > 0 && (now - prev.at) >= repeat;
+    if(isNew || isRepeat){ fresh[lv].push(r.doc); ALARMED.set(r.doc, {level:lv, at:now}); }
   });
   // a document that recovered (marked complete, or logic changed) can alert again later
-  const live = new Set(rows.filter(r=>!r.done && watch.includes(r.bucket)).map(r=>r.doc));
+  const live = new Set(rows.filter(r=>alarmLevel(r)).map(r=>r.doc));
   [...ALARMED.keys()].forEach(d=>{ if(!live.has(d)) ALARMED.delete(d); });
 
-  if(fresh.out.length){ playTone(scfg().out, 2); toast("Out of TAT", fresh.out, false); }
-  if(fresh.h1.length){ playTone(scfg().warn, 1); toast(bandLabels().h1, fresh.h1, true); }
+  if(fresh.out.length){  playTone(scfg().out, 2);  toast("Out of TAT", fresh.out, false); }
+  if(fresh.lead.length){ playTone(scfg().warn, 1);
+    toast("Out of TAT in under "+alarmLeadMins()+" minutes", fresh.lead, true); }
+  if(fresh.h1.length){   playTone(scfg().warn, 1); toast(bandLabels().h1, fresh.h1, true); }
 }
 function toast(title, docs, isWarn){
   const host = $("#toasts");
@@ -1643,7 +1686,7 @@ function toast(title, docs, isWarn){
     "<div class='docs'>"+docs.slice(0,12).map(esc).join(", ")+(docs.length>12?" +"+(docs.length-12)+" more":"")+"</div>";
   const row = el("div","row");
   const show = el("button","btn","Show these");
-  show.onclick = ()=>{ statusFilter = isWarn?"h1":"out"; $("#fDone").value="hide"; render();
+  show.onclick = ()=>{ FILT.bucket.clear(); FILT.bucket.add(isWarn?"h1":"out"); $("#fDone").value="hide"; render();
     document.querySelector(".tablewrap").scrollIntoView({behavior:"smooth",block:"start"}); t.remove(); };
   const dis = el("button","btn ghost","Dismiss");
   dis.onclick = ()=>t.remove();
@@ -1661,16 +1704,15 @@ function recompute(){ ALL = compute(); checkAlarms(ALL); render(); renderWall();
 
 function applyFilters(rows){
   const q = $("#fSearch").value.trim().toLowerCase();
-  const fs = $("#fScenario").value, fb = $("#fBu").value, fg = $("#fGrade").value,
-        fp = $("#fProc").value, fd = $("#fDone").value;
+  const fd = $("#fDone").value;
   return rows.filter(r=>{
     if(fd==="hide" && r.done) return false;
     if(fd==="only" && !r.done) return false;
-    if(fs && r.scenario!==fs) return false;
-    if(fb && r.bu!==fb) return false;
-    if(fg && r.grade!==fg) return false;
-    if(fp && r.procType!==fp) return false;
-    if(statusFilter && r.bucket!==statusFilter) return false;
+    if(FILT.scenario.size && !FILT.scenario.has(r.scenario)) return false;
+    if(FILT.bu.size       && !FILT.bu.has(r.bu)) return false;
+    if(FILT.grade.size    && !FILT.grade.has(r.grade)) return false;
+    if(FILT.procType.size && !FILT.procType.has(r.procType)) return false;
+    if(FILT.bucket.size   && !FILT.bucket.has(r.bucket)) return false;
     if(q){
       const hay = (r.doc+" "+r.wave+" "+r.shipTo+" "+r.shipToName+" "+r.bu+" "+r.scenario+" "+r.status).toLowerCase();
       if(!hay.includes(q)) return false;
@@ -1678,14 +1720,92 @@ function applyFilters(rows){
     return true;
   });
 }
-function fillSelect(sel, values){
-  const cur = sel.value;
-  sel.innerHTML = "";
-  sel.appendChild(new Option("All",""));
-  values.forEach(v=>sel.appendChild(new Option(v,v)));
-  if(values.includes(cur)) sel.value = cur;
+const MSELS = [
+  {id:"#fScenario", key:"scenario"}, {id:"#fBu", key:"bu"}, {id:"#fGrade", key:"grade"},
+  {id:"#fProc", key:"procType"}, {id:"#fStatus", key:"bucket"}
+];
+function initMulti(){
+  MSELS.forEach(m=>{
+    const host = $(m.id);
+    host.innerHTML =
+      "<button class='mtrig' type='button'><span class='mlbl'>All</span><span class='mcar'>&#9662;</span></button>"+
+      "<div class='mpop'><div class='mtools'>"+
+      "<button type='button' data-a='all'>All</button>"+
+      "<button type='button' data-a='none'>Clear</button></div>"+
+      "<div class='mlist'></div></div>";
+    host.querySelector(".mtrig").onclick = e=>{
+      e.stopPropagation();
+      const wasOpen = host.classList.contains("open");
+      document.querySelectorAll(".msel.open").forEach(x=>x.classList.remove("open"));
+      if(!wasOpen){ host.classList.add("open"); render(); }
+    };
+    host.querySelector("[data-a='all']").onclick = e=>{
+      e.stopPropagation();
+      host.querySelectorAll(".mlist input").forEach(i=>{ FILT[m.key].add(i.value); i.checked = true; });
+      if(m.key === "bucket") syncDoneFilter();
+      render();
+    };
+    host.querySelector("[data-a='none']").onclick = e=>{
+      e.stopPropagation();
+      FILT[m.key].clear();
+      host.querySelectorAll(".mlist input").forEach(i=>i.checked = false);
+      if(m.key === "bucket") syncDoneFilter();
+      render();
+    };
+    host.querySelector(".mpop").onclick = e=>e.stopPropagation();
+  });
+  document.addEventListener("click", ()=>{
+    document.querySelectorAll(".msel.open").forEach(x=>x.classList.remove("open"));
+  });
+  document.addEventListener("keydown", e=>{
+    if(e.key === "Escape") document.querySelectorAll(".msel.open").forEach(x=>x.classList.remove("open"));
+  });
 }
-const uniq = (rows,key)=>[...new Set(rows.map(r=>r[key]).filter(Boolean))].sort();
+// values: [{v, label, n}]. A list is only rebuilt when its options change, so the
+// popup does not reshuffle under the pointer on every thirty-second recompute.
+function fillMulti(id, key, values){
+  const host = $(id), sel = FILT[key];
+  [...sel].forEach(v=>{ if(!values.some(x=>x.v === v)) sel.delete(v); });
+  const lbl = host.querySelector(".mlbl");
+  const only = sel.size === 1 ? [...sel][0] : null;
+  lbl.textContent = !sel.size ? "All"
+    : only != null ? ((values.find(x=>x.v === only) || {label:only}).label)
+    : sel.size+" selected";
+  lbl.classList.toggle("on", sel.size > 0);
+  lbl.title = sel.size ? [...sel].map(v=>(values.find(x=>x.v===v)||{label:v}).label).join(", ") : "";
+  const sig = values.map(x=>x.v+":"+x.n).join("|");
+  if(host.dataset.sig === sig) return;
+  host.dataset.sig = sig;
+  const list = host.querySelector(".mlist");
+  list.innerHTML = "";
+  if(!values.length){ list.innerHTML = "<div class='mnone'>Nothing to choose from yet.</div>"; return; }
+  values.forEach(x=>{
+    const row = el("label","mrow");
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.value = x.v; cb.checked = sel.has(x.v);
+    cb.onchange = ()=>{
+      cb.checked ? sel.add(x.v) : sel.delete(x.v);
+      if(key === "bucket") syncDoneFilter();
+      render();
+    };
+    row.appendChild(cb);
+    row.appendChild(el("span","mt", x.label));
+    if(x.n != null) row.appendChild(el("span","mn", String(x.n)));
+    list.appendChild(row);
+  });
+}
+// Completed work is hidden by default, so asking for it by status has to reveal it.
+function syncDoneFilter(){
+  const d = $("#fDone");
+  if(FILT.bucket.has("done")) d.value = FILT.bucket.size === 1 ? "only" : "show";
+  else if(d.value === "only") d.value = "hide";
+}
+const tally = key => {
+  const m = new Map();
+  ALL.forEach(r=>{ const v = r[key]; if(v) m.set(v, (m.get(v)||0)+1); });
+  return [...m.entries()].sort((a,b)=>String(a[0]).localeCompare(String(b[0]), undefined, {numeric:true}))
+                         .map(([v,c])=>({v, label:v, n:c}));
+};
 
 function render(){
   const so=$("#srcOrders"), ss=$("#srcStores");
@@ -1694,19 +1814,13 @@ function render(){
   ss.className = "src "+(SRC.stores ? (SRC.sample?"sample":"loaded") : "");
   ss.querySelector(".nm").textContent = SRC.stores || "not loaded";
 
-  fillSelect($("#fScenario"), uniq(ALL,"scenario"));
-  fillSelect($("#fBu"), uniq(ALL,"bu"));
-  fillSelect($("#fGrade"), uniq(ALL,"grade"));
-  fillSelect($("#fProc"), uniq(ALL,"procType"));
-
-  // status filter — kept in step with the tiles and the count matrix
-  const fst = $("#fStatus");
-  const counts0 = {}; statusList().forEach(s=>counts0[s.k]=0);
+  fillMulti("#fScenario","scenario", tally("scenario"));
+  fillMulti("#fBu","bu", tally("bu"));
+  fillMulti("#fGrade","grade", tally("grade"));
+  fillMulti("#fProc","procType", tally("procType"));
+  const counts0 = {}; statusList().forEach(st=>counts0[st.k]=0);
   ALL.forEach(r=>counts0[r.bucket]++);
-  fst.innerHTML = "";
-  fst.appendChild(new Option("All",""));
-  statusList().forEach(s=>fst.appendChild(new Option(s.label+" ("+counts0[s.k]+")", s.k)));
-  fst.value = statusFilter || "";
+  fillMulti("#fStatus","bucket", statusList().map(st=>({v:st.k, label:st.label, n:counts0[st.k]})));
 
   const nz = $("#notices"); nz.innerHTML="";
   const noRule = ALL.filter(r=>r.ruleName==="no rule matched").length;
@@ -1750,13 +1864,14 @@ function render(){
   ALL.forEach(r=>counts[r.bucket]++);
   statusList().forEach(s=>{
     const b = el("button","sig "+s.cls+(s.k==="out"&&counts.out>0?" live":""));
-    b.setAttribute("aria-pressed", statusFilter===s.k?"true":"false");
+    b.setAttribute("aria-pressed", FILT.bucket.has(s.k)?"true":"false");
     b.innerHTML = "<span class='lbl'>"+esc(s.label)+"</span><span class='n'>"+counts[s.k]+"</span>"+
       "<span class='meta'>"+(counts[s.k]===1?"document":"documents")+" &middot; "+s.note+"</span>";
-    b.onclick = ()=>{ statusFilter = statusFilter===s.k?null:s.k;
-      if(statusFilter==="done") $("#fDone").value="only";
-      else if($("#fDone").value==="only") $("#fDone").value="hide";
-      render(); };
+    b.title = FILT.bucket.has(s.k) ? "Stop filtering to "+s.label
+                                   : "Add "+s.label+" to the status filter";
+    b.onclick = ()=>{
+      FILT.bucket.has(s.k) ? FILT.bucket.delete(s.k) : FILT.bucket.add(s.k);
+      syncDoneFilter(); render(); };
     sig.appendChild(b);
   });
 
@@ -1815,15 +1930,15 @@ function renderMatrix(){
 
   t.querySelectorAll("td.hit").forEach(td=>{
     td.onclick = ()=>{
-      const s = td.dataset.s, v = td.dataset.v;
-      statusFilter = s;
-      $("#fDone").value = s==="done" ? "only" : "hide";
-      ["fScenario","fBu","fGrade","fProc"].forEach(id=>$("#"+id).value="");
+      const st = td.dataset.s, v = td.dataset.v;
+      Object.values(FILT).forEach(f=>f.clear());
+      FILT.bucket.add(st);
+      $("#fDone").value = st==="done" ? "only" : "hide";
       $("#fSearch").value = "";
-      if(dim==="scenario") $("#fScenario").value = v;
-      else if(dim==="bu") $("#fBu").value = v;
-      else if(dim==="grade") $("#fGrade").value = v;
-      else if(dim==="procType") $("#fProc").value = v;
+      if(dim==="scenario" && v) FILT.scenario.add(v);
+      else if(dim==="bu" && v) FILT.bu.add(v);
+      else if(dim==="grade" && v) FILT.grade.add(v);
+      else if(dim==="procType" && v) FILT.procType.add(v);
       else $("#fSearch").value = v;
       render();
       document.querySelector(".tablewrap").scrollIntoView({behavior:"smooth",block:"start"});
@@ -1915,7 +2030,7 @@ function renderTable(){
   // Grouping only makes sense while the list is in urgency order, and never when
   // the board has been filtered down to the breached documents on purpose.
   const grouped = SORT.key === "remaining" && SORT.dir > 0 &&
-                  CFG.groupOut !== false && statusFilter !== "out";
+                  CFG.groupOut !== false && !FILT.bucket.has("out");
   const outRows = grouped ? VIEW.filter(r=>!r.done && r.bucket === "out") : [];
   let headPlaced = false;
 
@@ -2019,7 +2134,7 @@ function doneToast(doc){
   const undo = el("button","btn","Undo");
   undo.onclick = ()=>{ DONE.delete(String(doc)); saveDone(); recompute(); t.remove(); };
   const show = el("button","btn ghost","Show completed");
-  show.onclick = ()=>{ statusFilter=null; $("#fDone").value="only"; render(); t.remove(); };
+  show.onclick = ()=>{ FILT.bucket.clear(); $("#fDone").value="only"; render(); t.remove(); };
   row.appendChild(undo); row.appendChild(show); t.appendChild(row);
   host.appendChild(t);
   setTimeout(()=>{ if(t.isConnected) t.remove(); }, 12000);
@@ -2403,6 +2518,8 @@ function syncSettingsInputs(){
   $("#optMute").setAttribute("aria-checked", so.mute ? "true" : "false");
   $("#setAlarmOn").setAttribute("aria-checked", ALARM_ON ? "true" : "false");
   $("#optAlarmWhen").value = CFG.alarmWhen;
+  $("#optAlarmLead").value = alarmLeadMins();
+  $("#leadFld").style.display = CFG.alarmWhen === "lead" ? "" : "none";
   $("#optAlarmRepeat").value = String(CFG.alarmRepeat);
   let th = ""; try{ th = localStorage.getItem("pickTat.theme") || ""; }catch(e){}
   $("#optTheme").value = th;
@@ -2528,8 +2645,8 @@ function wireDrop(zone, input, handler){
 function resetBoard(){
   expanded.clear(); ALARMED.clear(); wallPage = 0;
   OUT_OPEN = CFG.groupOutOpen === true;
-  statusFilter = null;
-  ["fScenario","fBu","fGrade","fProc"].forEach(id=>$("#"+id).value = "");
+  Object.values(FILT).forEach(f=>f.clear());
+  document.querySelectorAll(".msel .mlist input").forEach(i=>i.checked = false);
   $("#fSearch").value = "";
   $("#fDone").value = "hide";
 }
@@ -3098,8 +3215,11 @@ function paintAlarmBtn(){
   const b = $("#btnAlarm");
   b.classList.toggle("alarm-on", ALARM_ON);
   $("#alarmLbl").textContent = ALARM_ON ? "Alert on" : "Alert off";
-  b.title = ALARM_ON ? "A tone sounds when a document goes out of TAT — click to switch off"
-                     : "Switch on a tone for documents going out of TAT";
+  b.title = ALARM_ON
+    ? (CFG.alarmWhen === "lead"
+        ? "A tone sounds "+alarmLeadMins()+" minutes before a document goes out of TAT, and again when it does — click to switch off"
+        : "A tone sounds when a document goes out of TAT — click to switch off")
+    : "Switch on a tone for documents going out of TAT";
 }
 $("#btnAlarm").onclick = ()=>{
   ALARM_ON = !ALARM_ON;
@@ -3112,17 +3232,15 @@ paintAlarmBtn();
 $("#setAlarmOn").setAttribute("aria-checked", ALARM_ON ? "true" : "false");
 OUT_OPEN = CFG.groupOutOpen === true;
 
-["fSearch","fScenario","fBu","fGrade","fProc","fDone"].forEach(id=>$("#"+id).addEventListener("input", render));
-$("#fStatus").addEventListener("change", e=>{
-  statusFilter = e.target.value || null;
-  if(statusFilter === "done") $("#fDone").value = "only";
-  else if($("#fDone").value === "only") $("#fDone").value = "hide";
-  render();
-});
+["fSearch","fDone"].forEach(id=>$("#"+id).addEventListener("input", render));
+initMulti();
 $("#mxDim").addEventListener("change", renderMatrix);
 $("#btnClear").onclick = ()=>{
-  ["fSearch","fScenario","fBu","fGrade","fProc"].forEach(id=>$("#"+id).value="");
-  $("#fDone").value="hide"; statusFilter=null; render();
+  $("#fSearch").value = "";
+  Object.values(FILT).forEach(f=>f.clear());
+  document.querySelectorAll(".msel .mlist input").forEach(i=>i.checked = false);
+  $("#fDone").value = "hide";
+  render();
 };
 
 $("#optBandMode").onchange = e=>{
@@ -3133,7 +3251,16 @@ $("#optBandMode").onchange = e=>{
 ["E1","E2","E3"].forEach((n,i)=>{
   $("#opt"+n).oninput = e=>{ CFG.bands["e"+(i+1)] = Number(e.target.value)||0; saveCfg(); renderBandPreview(); recompute(); };
 });
-$("#optAlarmWhen").onchange = e=>{ CFG.alarmWhen=e.target.value; ALARMED.clear(); saveCfg(); recompute(); };
+$("#optAlarmWhen").onchange = e=>{
+  CFG.alarmWhen = e.target.value; ALARMED.clear(); saveCfg();
+  $("#leadFld").style.display = CFG.alarmWhen === "lead" ? "" : "none";
+  recompute();
+};
+$("#optAlarmLead").oninput = e=>{
+  const v = Number(e.target.value);
+  if(!Number.isFinite(v) || v <= 0) return;
+  CFG.alarmLead = Math.min(1440, Math.round(v)); ALARMED.clear(); saveCfg(); recompute();
+};
 $("#optAlarmRepeat").onchange = e=>{ CFG.alarmRepeat=Number(e.target.value)||0; saveCfg(); };
 $("#optRowFill").onclick = ()=>{ CFG.rowFill = !CFG.rowFill;
   $("#optRowFill").setAttribute("aria-checked", CFG.rowFill?"true":"false"); saveCfg(); recompute(); };
