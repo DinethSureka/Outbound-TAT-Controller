@@ -871,11 +871,18 @@ tr.grouphead td{padding:0!important;background:var(--surface-2);border-bottom:1p
         </select></label>
         <label class="f"><span>Picking statuses that mean complete</span><input type="text" id="optDoneStatus" placeholder="Completed"><span class="fh">Comma separated.</span></label>
       </div>
-      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:.65em;margin-top:12px;padding-top:11px;border-top:1px solid var(--line-soft)">
+        <button class="sw" id="optClearDoneUp" aria-checked="true"></button>
+        <div>
+          <div style="font-size:12px;font-weight:600">Start fresh on every upload</div>
+          <div class="fh">A new extract carries its own picking statuses, so hand marks made against the previous one are stale. Clearing them, along with the filters, means nothing left over from the last file can be read as current. The upload notice offers one click to put the marks back.</div>
+        </div>
+      </div>
+      <div style="margin-top:11px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <button class="btn" id="btnClearDone">Clear documents marked complete</button>
         <span class="hint" id="doneCount"></span>
       </div>
-      <div class="tiny">Marks are kept in this browser against the document number, so they survive a refresh and a re-upload of the same documents.</div>
+      <div class="tiny">Marks are kept in this browser against the document number, so they survive a refresh. With the switch above off they also survive a re-upload.</div>
     </div>
 
   </div>
@@ -977,6 +984,9 @@ function defaultConfig(){
     // A picking extract that already reports a document as picked is the truth of
     // record — a board that ignored it kept showing work the floor had finished.
     doneRule:"manualOrStatus", doneStatuses:"Completed",
+    // A new extract carries its own picking statuses, so marks made by hand against
+    // the previous one are stale the moment it lands.
+    clearDoneOnUpload:true,
     wall:{rows:9, pageSec:9, rotateDim:true, ticker:true, tickerSpeed:55, ambient:true, bu:"", scenario:"",
           groupOut:true, statuses:["out","h1","h3","h6","safe","done"]},
     // Placeholder policy. These are illustrative numbers, not any operation's real
@@ -1572,6 +1582,19 @@ function render(){
   if(srcDone) addNotice(nz,"<b>"+srcDone+" document"+(srcDone>1?"s":"")+"</b> the extract already reports as <b>"+
     esc(CFG.doneStatuses)+"</b> are still counted as open, because completion is set to hand marks only. "+
     "Switch it under <b>TAT logic &rsaquo; Completion</b> to have a re-upload close them.");
+  // A rule set that fits the data sends most documents to a specific rule. When
+  // nearly everything lands on a catch-all, the rules are almost certainly not the
+  // ones this extract needs — the usual cause is a board that has never had the
+  // operation's own policy imported, which quietly puts every document on one TAT.
+  const anyRule = CFG.rules.filter(r=>r.on && !r.m.procType && !r.m.scenario && !r.m.grade && !r.m.bu)
+                           .map(r=>r.name);
+  const onAny = anyRule.length ? ALL.filter(r=>anyRule.includes(r.ruleName)) : [];
+  if(ALL.length >= 8 && onAny.length / ALL.length > 0.6){
+    const sc = [...new Set(onAny.map(r=>r.scenario).filter(Boolean))].slice(0,6);
+    addNotice(nz, "<b>"+onAny.length+" of "+ALL.length+" documents</b> matched nothing more specific than the catch-all rule"+
+      (sc.length ? ", including everything on <b>"+sc.map(esc).join("</b>, <b>")+"</b>" : "")+
+      ", so they are all running the same TAT from the same start. The rules loaded here are probably not the ones this extract needs &mdash; load yours under <b>TAT logic &rsaquo; Import</b>.", true);
+  }
   const unk = unknownCodes();
   if(unk.length) addNotice(nz,"The store master uses the cut-off code"+(unk.length>1?"s":"")+" <b>"+unk.map(esc).join("</b>, <b>")+
     "</b>, which "+(unk.length>1?"are":"is")+" not in the code table. Those days currently take the store's own <b>Order Cut-Offs</b> time instead. Give "+
@@ -1859,18 +1882,24 @@ function doneToast(doc){
 }
 // A re-upload that lands on a board full of the same numbers looks like nothing
 // happened, so say plainly what was read and how much of it is already closed.
-function dataToast(name){
+function dataToast(name, cleared, kept){
   const host = $("#toasts");
   const t = el("div","toast okmsg");
   const done = ALL.filter(r=>r.done).length, out = ALL.filter(r=>r.bucket==="out").length;
   t.innerHTML = "<h4>Data refreshed</h4><div class='docs'>"+esc(name)+" &middot; "+ALL.length+
-    " documents &middot; "+done+" complete &middot; "+out+" out of TAT</div>";
+    " documents &middot; "+done+" complete &middot; "+out+" out of TAT"+
+    (cleared ? "<br>Board reset &middot; "+cleared+" hand-marked document"+(cleared>1?"s":"")+" cleared" : "")+"</div>";
   const row = el("div","row");
+  if(cleared){
+    const undo = el("button","btn","Put the marks back");
+    undo.onclick = ()=>{ kept.forEach((v,k)=>DONE.set(k,v)); saveDone(); recompute(); t.remove(); };
+    row.appendChild(undo);
+  }
   const dis = el("button","btn ghost","Dismiss");
   dis.onclick = ()=>t.remove();
   row.appendChild(dis); t.appendChild(row);
   host.appendChild(t);
-  setTimeout(()=>{ if(t.isConnected) t.remove(); }, 12000);
+  setTimeout(()=>{ if(t.isConnected) t.remove(); }, cleared ? 20000 : 12000);
 }
 function step(k,v,n){ return "<div class='step'><div class='st-k'>"+k+"</div><div class='st-v'>"+esc(v)+"</div><div class='st-n'>"+esc(n)+"</div></div>"; }
 
@@ -1994,6 +2023,7 @@ function syncLogicInputs(){
   renderWallStatuses();
   $("#optRowFill").setAttribute("aria-checked", CFG.rowFill ? "true" : "false");
   $("#optGroupOut").setAttribute("aria-checked", CFG.groupOut!==false?"true":"false");
+  $("#optClearDoneUp").setAttribute("aria-checked", CFG.clearDoneOnUpload!==false?"true":"false");
   $("#optDoneRule").value = CFG.doneRule;
   $("#optDoneStatus").value = CFG.doneStatuses;
   $("#optDateFmt").value = CFG.dateFmt;
@@ -2137,17 +2167,28 @@ function wireDrop(zone, input, handler){
   input.onchange = ()=>{ if(input.files[0]) go(input.files[0]); input.value=""; };
   async function go(f){
     try{
+      const kept = new Map(DONE);              // held so the toast can put them back
       await handler(f);
-      // Nothing from the previous file may leak into the new one: row expansions
-      // point at old indexes, the alert memory would suppress a genuine new breach,
-      // and the wall could be paged past the end of a shorter list.
-      expanded.clear(); ALARMED.clear(); wallPage = 0;
-      OUT_OPEN = CFG.groupOutOpen === true;
+      resetBoard();
+      const cleared = CFG.clearDoneOnUpload !== false ? kept.size : 0;
+      if(cleared){ DONE.clear(); saveDone(); }
       recompute();
-      dataToast(f.name);
+      dataToast(f.name, cleared, kept);
     }
     catch(err){ alert(err.message || "Could not read that file."); }
   }
+}
+
+// A new extract is a new picture of the floor, so everything the old one left on the
+// board goes with it. Filters and expansions describe documents that may not even be
+// in this file, and the alert memory would swallow a genuine new breach.
+function resetBoard(){
+  expanded.clear(); ALARMED.clear(); wallPage = 0;
+  OUT_OPEN = CFG.groupOutOpen === true;
+  statusFilter = null;
+  ["fScenario","fBu","fGrade","fProc"].forEach(id=>$("#"+id).value = "");
+  $("#fSearch").value = "";
+  $("#fDone").value = "hide";
 }
 
 /* ---------------------- export ---------------------- */
@@ -2763,6 +2804,8 @@ $("#setAlarmOn").onclick = ()=>$("#btnAlarm").click();
     wallPage = 0; saveCfg(); renderWall();
   };
 })();
+$("#optClearDoneUp").onclick = ()=>{ CFG.clearDoneOnUpload = CFG.clearDoneOnUpload === false;
+  $("#optClearDoneUp").setAttribute("aria-checked", CFG.clearDoneOnUpload?"true":"false"); saveCfg(); };
 $("#optDoneRule").onchange = e=>{ CFG.doneRule=e.target.value; saveCfg(); recompute(); };
 $("#optDoneStatus").oninput = e=>{ CFG.doneStatuses=e.target.value; saveCfg(); recompute(); };
 $("#optDateFmt").onchange = e=>{ CFG.dateFmt=e.target.value; saveCfg(); recompute(); };
