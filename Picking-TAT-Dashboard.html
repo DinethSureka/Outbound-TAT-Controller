@@ -856,6 +856,12 @@ tr.grouphead td{padding:0!important;background:var(--surface-2);border-bottom:1p
         <label class="f"><span id="lb3">Then within</span><input type="number" id="optE3" min="0" step="0.5"></label>
       </div>
       <div class="bandprev" id="bandPreview"></div>
+      <div style="margin-top:13px;padding-top:12px;border-top:1px solid var(--line-soft)">
+        <label class="f" style="max-width:260px"><span>Cut-off grace, every rule</span>
+          <input type="number" id="optGraceAll" min="0" max="720" step="5">
+          <span class="fh">Minutes past a cut-off in which a document still makes it. At 30, one released 09:06 still starts from the 09:00; one released 09:45 waits for the next. Setting it here writes it to every rule at once.</span></label>
+        <div class="tiny" id="graceMixed"></div>
+      </div>
       <div style="display:flex;align-items:center;gap:.65em;margin-top:13px;padding-top:12px;border-top:1px solid var(--line-soft)">
         <button class="sw" id="optGroupOut" aria-checked="true" title="Collect out-of-TAT documents into one block at the foot of the list"></button>
         <div>
@@ -1436,6 +1442,7 @@ function timesFor(rl, store, weekday, cm){
 function resolveStart(ref, rl, store, cm){
   if(rl.start === "immediate") return { at:ref, note:"clock starts at the order stamp" };
   const grace = (Number(rl.grace)||0)*60000;
+  const graceMin = Math.round(grace/60000);
   const base = dayStartOf(ref);
   const usedFallback = rl.start === "store" && !store;
   const eff = usedFallback ? Object.assign({}, rl, {start:"cutoff"}) : rl;
@@ -1444,8 +1451,15 @@ function resolveStart(ref, rl, store, cm){
     const wd = DAYS[new Date(d).getDay()];
     for(const t of timesFor(eff, store, wd, cm)){
       const c = d + t*1000;
-      if(ref <= c + grace)
-        return { at:c, note:(usedFallback?"rule fallback ":"")+"cut-off "+secLabel(t)+" on "+wd, fallback:usedFallback };
+      if(ref <= c + grace){
+        // Caught by the grace window rather than by arriving in time: worth saying,
+        // because the clock then starts before the document was even released.
+        const late = ref > c;
+        return { at:c, fallback:usedFallback,
+          note:(usedFallback?"rule fallback ":"")+"cut-off "+secLabel(t)+" on "+wd+
+               (late ? " — released "+Math.round((ref-c)/60000)+" min after it, inside the "+graceMin+" min grace"
+                     : (graceMin ? " ("+graceMin+" min grace)" : ""))};
+      }
     }
   }
   return { at:null, note:"no cut-off found in the next 14 days", fallback:usedFallback };
@@ -1576,6 +1590,7 @@ function compute(){
       procType:String(o.procType||""), status:String(o.status||""),
       created, released, ref, refKind, start, startNote, expected, remaining, tat,
       ruleName: rl?rl.name:"no rule matched", ruleStart: rl?rl.start:"",
+      grace: rl ? (Number(rl.grace)||0) : 0,
       storeFound:!!store, needsStore: !!(rl && rl.start==="store"), fallback,
       done, doneAt: DONE.get(String(o.doc)) || null, manualDone: DONE.has(String(o.doc)),
       bucket: done ? "done" : bucketOf(remaining, tat)
@@ -2089,6 +2104,9 @@ function renderTable(){
         step("Rule matched", rw.ruleName, "scenario "+(rw.scenario||"—")+" · grade "+(rw.grade||"—")+" · proc. type "+(rw.procType||"—"))+
         step("Clock reference", fmtDTFull(rw.ref), "taken from "+rw.refKind)+
         step("Revised start", fmtDTFull(rw.start), rw.startNote||"—")+
+        step("Cut-off grace", rw.ruleStart==="immediate" ? "not used on this rule" : rw.grace+" minutes",
+             rw.ruleStart==="immediate" ? "the clock runs from the order stamp"
+               : "a document arriving up to this long after a cut-off still takes it")+
         step("TAT applied", rw.tat+" hours", rw.ruleStart==="store" ? "store cut-off calendar" : rw.ruleStart==="cutoff" ? "fixed cut-off on the rule" : "starts at the order stamp")+
         step("Expected packing", fmtDTFull(rw.expected), rw.done ? "complete — clock stopped" : fmtDur(rw.remaining)+" from now")+
         step("Source status", rw.status||"—", rw.manualDone ? "marked complete here at "+fmtDTFull(new Date(rw.doneAt).getTime()) : "not marked complete on this board")+
@@ -2456,6 +2474,16 @@ function renderCodes(){
     host.appendChild(row);
   });
 }
+// Rules can each carry their own grace, but on a real floor it is one number. Show
+// the common one, and say so when they have drifted apart.
+function syncGraceAll(){
+  const gated = CFG.rules.filter(r=>r.start !== "immediate");
+  const vals = [...new Set(gated.map(r=>Number(r.grace)||0))];
+  $("#optGraceAll").value = vals.length === 1 ? vals[0] : (gated.length ? "" : 0);
+  $("#graceMixed").innerHTML = vals.length > 1
+    ? "Rules currently disagree: <b>"+vals.sort((a,b)=>a-b).join("</b>, <b>")+"</b> minutes. Type a number above to settle them all on it."
+    : (gated.length ? "" : "No rule resolves a cut-off, so grace does not apply.");
+}
 function renderBandPreview(){
   const L = bandLabels(), host = $("#bandPreview"); host.innerHTML="";
   ["out","h1","h3","h6","safe"].forEach(k=>{
@@ -2466,6 +2494,7 @@ function syncLogicInputs(){
   const u = CFG.bandMode==="pct" ? "%" : "hours";
   $("#optBandMode").value = CFG.bandMode;
   $("#optE1").value = CFG.bands.e1; $("#optE2").value = CFG.bands.e2; $("#optE3").value = CFG.bands.e3;
+  syncGraceAll();
   $("#lb1").textContent = "Red band — under ("+u+")";
   $("#lb2").textContent = "Amber band — under ("+u+")";
   $("#lb3").textContent = "Green band — under ("+u+")";
@@ -3262,6 +3291,15 @@ $("#optAlarmLead").oninput = e=>{
   CFG.alarmLead = Math.min(1440, Math.round(v)); ALARMED.clear(); saveCfg(); recompute();
 };
 $("#optAlarmRepeat").onchange = e=>{ CFG.alarmRepeat=Number(e.target.value)||0; saveCfg(); };
+$("#optGraceAll").oninput = e=>{
+  if(e.target.value === "") return;
+  const v = Math.max(0, Math.min(720, Math.round(Number(e.target.value) || 0)));
+  CFG.rules.forEach(r=>{ if(r.start !== "immediate") r.grace = v; });
+  CFG.placeholder = false; saveCfg();
+  $("#graceMixed").innerHTML = "";
+  if($("#drawerL").classList.contains("on")) renderRules();
+  recompute();
+};
 $("#optRowFill").onclick = ()=>{ CFG.rowFill = !CFG.rowFill;
   $("#optRowFill").setAttribute("aria-checked", CFG.rowFill?"true":"false"); saveCfg(); recompute(); };
 $("#optGroupOut").onclick = ()=>{ CFG.groupOut = CFG.groupOut === false;
