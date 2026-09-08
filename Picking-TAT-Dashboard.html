@@ -525,6 +525,35 @@ input[type=file]{display:none}
 .dropz .t{font-size:12.5px;font-weight:600}
 .dropz .s{font-size:11px;color:var(--text-3);margin-top:2px}
 
+/* ---- store master editor ---- */
+.drawer.wide{width:min(1180px,100%)}
+.storetools{display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.storetools input[type=search]{flex:1;min-width:180px;background:var(--surface);border:1px solid var(--line);
+  border-radius:3px;padding:5px 8px;font-size:12px}
+.storetools input[type=search]:focus{border-color:var(--accent);outline:none}
+.inlinef{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-2);white-space:nowrap;cursor:pointer}
+.inlinef input{accent-color:var(--accent)}
+.stwrap{max-height:min(58vh,560px);overflow:auto;border:1px solid var(--line);border-radius:5px;background:var(--surface)}
+table.sttab{width:100%;border-collapse:collapse}
+table.sttab thead th{position:sticky;top:0;z-index:2;background:var(--surface-2);
+  font-family:Archivo,sans-serif;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--text-3);text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.sttab thead th.d{text-align:center;width:52px}
+table.sttab td{padding:2px 4px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+table.sttab tr:hover{background:var(--surface-2)}
+table.sttab td.x{width:30px;text-align:center}
+table.sttab input{width:100%;background:transparent;border:1px solid transparent;border-radius:3px;
+  padding:3px 5px;font-size:11.5px;color:var(--text)}
+table.sttab input:hover{border-color:var(--line)}
+table.sttab input:focus{border-color:var(--accent);background:var(--surface);outline:none}
+table.sttab input.code{font-family:"IBM Plex Mono",monospace;font-size:11px}
+table.sttab td.d{text-align:center}
+table.sttab input.day{text-align:center;font-family:"IBM Plex Mono",monospace;font-size:11px;
+  color:var(--text-3);text-transform:uppercase}
+/* A day that carries a cut-off is the exception worth seeing at a glance. */
+table.sttab input.day.set{color:var(--ok);font-weight:600;background:var(--ok-bg)}
+table.sttab tr.nodays td.site input{color:var(--warn)}
+
 /* ---- out-of-TAT group at the foot of the working list ----
    Breached work is a backlog, not a queue: it reports as one block and only
    opens to document level when someone asks it to. ---- */
@@ -592,6 +621,7 @@ tr.grouphead td{padding:0!important;background:var(--surface-2);border-bottom:1p
     <div class="src" id="srcOrders"><span class="tag">Orders</span><span class="nm">&mdash;</span></div>
     <div class="src" id="srcStores"><span class="tag">Store cut-offs</span><span class="nm">&mdash;</span></div>
     <span class="hint spacer" id="calcHint"></span>
+    <button class="btn ghost" id="btnStores">Edit stores</button>
     <button class="btn ghost" id="btnUpload2">Replace files</button>
   </div>
 
@@ -644,7 +674,7 @@ tr.grouphead td{padding:0!important;background:var(--surface-2);border-bottom:1p
     <span class="sep">&middot;</span>
     <span>Developed by <b>Dineth Chandrasiri</b></span>
     <span class="sep">&middot;</span>
-    <span>8 September 2026</span>
+    <span>9 September 2026</span>
   </footer>
 </div>
 
@@ -688,7 +718,7 @@ tr.grouphead td{padding:0!important;background:var(--surface-2);border-bottom:1p
   </div>
   <div class="wall-foot">
     <span id="wData">&mdash;</span>
-    <span class="mid">Developed by Dineth Chandrasiri &middot; 8 September 2026</span>
+    <span class="mid">Developed by Dineth Chandrasiri &middot; 9 September 2026</span>
     <span id="wUpdated">&mdash;</span>
   </div>
 </div>
@@ -712,6 +742,10 @@ tr.grouphead td{padding:0!important;background:var(--surface-2);border-bottom:1p
       <div class="dropz" id="dzStores"><div class="t">Drop the store master here, or click to browse</div><div class="s">.xlsx, .xls or .csv</div></div>
       <input type="file" id="fileStores" accept=".xlsx,.xls,.csv">
       <div class="tiny" id="storesInfo"></div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn" id="btnStores2">Edit the store master</button>
+        <span class="hint">Add a site, change a cut-off day, or drop a site &mdash; without touching the file.</span>
+      </div>
     </div>
     <div class="sect">
       <h3>Reading dates</h3>
@@ -889,6 +923,37 @@ tr.grouphead td{padding:0!important;background:var(--surface-2);border-bottom:1p
   <div class="drawer-f"><button class="btn primary" data-close="L">Apply &amp; close</button><span class="hint">Saved on this browser.</span></div>
 </div>
 
+<!-- ============ STORE MASTER ============ -->
+<div class="scrim" id="scrimV"></div>
+<div class="drawer wide" id="drawerV" role="dialog" aria-label="Store master">
+  <div class="drawer-h">
+    <h2>Store master</h2>
+    <span class="hint" id="storeCount"></span>
+    <button class="btn" id="btnStoreAdd">+ Add store</button>
+    <button class="btn ghost" id="btnStoreExport">Export JSON</button>
+    <button class="btn ghost" id="btnStoreImport">Import</button>
+    <input type="file" id="fileStoresJson" accept=".json">
+    <button class="btn ghost" data-close="V">Close</button>
+  </div>
+  <div class="drawer-b">
+    <div class="sect">
+      <h3>Cut-off calendar</h3>
+      <p class="desc">One row per site. A weekday cell holds the cut-off code that store takes that day &mdash; <code>C1</code>, <code>C3</code>, or a plain time such as <code>09:00</code>. Leave a day empty and the store takes no order then, so a document released that day rolls forward to the next day it does: a site carrying only <code>Wed&nbsp;C3</code> puts a Sunday release on <b>Wednesday 19:00</b>. Codes become times under <b>TAT logic &rsaquo; Cut-off codes</b>.</p>
+      <div class="storetools">
+        <input type="search" id="storeFind" placeholder="Find a site code, store name, BU or grade&hellip;">
+        <label class="inlinef"><input type="checkbox" id="storeOnlyGaps"> Only sites with no cut-off day</label>
+      </div>
+      <div class="stwrap"><table class="sttab" id="storeTable"></table></div>
+      <div class="tiny">Every edit is kept on this browser straight away and survives a refresh, an orders upload and a new release of the board &mdash; the master only has to be loaded once. <b>Export JSON</b> hands the same master to another screen. The <b>Cut-off</b> column is the site's own fallback time, used on a day that is open but carries a code the table cannot read.</div>
+    </div>
+  </div>
+  <div class="drawer-f">
+    <button class="btn primary" data-close="V">Done</button>
+    <button class="btn ghost" id="btnStoreFromFile">Replace it from a file</button>
+    <span class="hint">Saved on this browser.</span>
+  </div>
+</div>
+
 <!-- ============ SETTINGS ============ -->
 <div class="scrim" id="scrimS"></div>
 <div class="drawer" id="drawerS" role="dialog" aria-label="Settings">
@@ -1058,6 +1123,43 @@ function loadDone(){
 }
 function saveDone(){
   try{ localStorage.setItem("pickTat.done.v1", JSON.stringify(Object.fromEntries(DONE))); }catch(e){}
+}
+
+/* The store master is edited on the board, not only uploaded, so it has to outlive
+   the page. Days are stored as the raw code text — that is what the editor shows and
+   what the cut-off table turns into a time. */
+function storesToPlain(){
+  const o = {};
+  STORES.forEach((v,k)=>{ o[k] = { site:v.site, grade:v.grade||"", name:v.name||"", bu:v.bu||"",
+    cutoff:v.cutoff||"",
+    days:Object.fromEntries(Object.entries(v.days||{}).map(([d,c])=>[d,(c.codes||[]).join(",")])) }; });
+  return o;
+}
+function storesFromPlain(sites){
+  const m = new Map();
+  Object.entries(sites||{}).forEach(([k,v])=>{
+    const days = {};
+    Object.entries(v.days||{}).forEach(([d,codes])=>{
+      const list = splitList(codes);
+      days[d] = { codes:list, active:true };
+    });
+    m.set(String(k), { site:String(k), grade:v.grade||"", name:v.name||"", bu:v.bu||"",
+                       cutoff:v.cutoff||"", days });
+  });
+  return m;
+}
+function saveStores(){
+  try{ localStorage.setItem("pickTat.stores.v1",
+    JSON.stringify({ src:SRC.stores, sites:storesToPlain() })); }catch(e){}
+}
+function loadStores(){
+  try{
+    const raw = localStorage.getItem("pickTat.stores.v1");
+    if(!raw) return null;
+    const p = JSON.parse(raw);
+    const m = storesFromPlain(p && p.sites);
+    return m.size ? { map:m, src:(p.src || m.size+" sites saved here") } : null;
+  }catch(e){ return null; }
 }
 
 /* alert state */
@@ -1903,6 +2005,89 @@ function dataToast(name, cleared, kept){
 }
 function step(k,v,n){ return "<div class='step'><div class='st-k'>"+k+"</div><div class='st-v'>"+esc(v)+"</div><div class='st-n'>"+esc(n)+"</div></div>"; }
 
+/* ---------------------- store master ---------------------- */
+// The master's own column order, which is the order the floor reads a week in.
+function renderStores(){
+  const host = $("#storeTable");
+  const q = ($("#storeFind").value || "").trim().toLowerCase();
+  const gapsOnly = $("#storeOnlyGaps").checked;
+  let list = [...STORES.values()];
+  if(q) list = list.filter(st=>(st.site+" "+(st.name||"")+" "+(st.bu||"")+" "+(st.grade||"")).toLowerCase().includes(q));
+  if(gapsOnly) list = list.filter(st=>!Object.keys(st.days||{}).length);
+  list.sort((a,b)=>String(a.site).localeCompare(String(b.site), undefined, {numeric:true}));
+
+  $("#storeCount").textContent = list.length === STORES.size
+    ? STORES.size+" site"+(STORES.size===1?"":"s")
+    : list.length+" of "+STORES.size+" sites";
+
+  host.innerHTML = "<thead><tr><th>Site</th><th>Store name</th><th>BU</th><th>Gr</th><th>Cut-off</th>"+
+    DAY_ORDER.map(d=>"<th class='d'>"+d+"</th>").join("")+"<th></th></tr></thead>";
+  const tb = el("tbody");
+  if(!list.length){
+    tb.innerHTML = "<tr><td colspan='"+(6+DAY_ORDER.length)+"' style='text-align:center;padding:20px;color:var(--text-3)'>"+
+      (STORES.size ? "No site matches that." : "No sites yet. Add one, import a master, or upload the cut-off file.")+"</td></tr>";
+  }
+  list.forEach(st=>{
+    const tr = el("tr", Object.keys(st.days||{}).length ? "" : "nodays");
+    tr.appendChild(stCell(st,"site","code site",70));
+    tr.appendChild(stCell(st,"name","",0));
+    tr.appendChild(stCell(st,"bu","",90));
+    tr.appendChild(stCell(st,"grade","code",42));
+    tr.appendChild(stCell(st,"cutoff","code",64));
+    DAY_ORDER.forEach(d=>tr.appendChild(stDayCell(st,d)));
+    const x = el("td","x");
+    const b = iconBtn("\u2715", "Remove this site from the master", ()=>{
+      if(!confirm("Remove site "+st.site+(st.name?" — "+st.name:"")+" from the store master?")) return;
+      STORES.delete(String(st.site)); saveStores(); renderStores(); recompute();
+    });
+    b.className = "iconbtn danger";
+    x.appendChild(b); tr.appendChild(x);
+    tb.appendChild(tr);
+  });
+  host.appendChild(tb);
+}
+function stCell(st, key, cls, w){
+  const td = el("td", key==="site" ? "site" : "");
+  const i = el("input");
+  i.type = "text"; i.value = st[key] || "";
+  if(cls) i.className = cls;
+  if(w) i.style.width = w+"px";
+  if(key==="cutoff") i.placeholder = "hh:mm";
+  i.onchange = ()=>{
+    const v = i.value.trim();
+    if(key === "site"){
+      const from = String(st.site);
+      if(!v){ i.value = from; return; }
+      if(v !== from && STORES.has(v)){ alert("Site "+v+" is already in the master."); i.value = from; return; }
+      STORES.delete(from); st.site = v; STORES.set(v, st);
+      saveStores(); recompute(); renderStores(); return;
+    }
+    st[key] = v; saveStores(); recompute();
+  };
+  td.appendChild(i); return td;
+}
+function stDayCell(st, d){
+  const td = el("td","d");
+  const i = el("input","code day");
+  i.type = "text";
+  i.value = ((st.days && st.days[d] && st.days[d].codes) || []).join(",");
+  i.placeholder = "—";
+  i.title = d+" cut-off for site "+st.site+" — a code such as C1 or C3, a time such as 09:00, or blank for a day the store takes no order";
+  i.classList.toggle("set", !!i.value);
+  i.onchange = ()=>{
+    const codes = splitList(i.value.toUpperCase());
+    st.days = st.days || {};
+    if(codes.length) st.days[d] = { codes, active:true };
+    else delete st.days[d];
+    i.value = codes.join(",");
+    i.classList.toggle("set", codes.length > 0);
+    i.closest("tr").className = Object.keys(st.days).length ? "" : "nodays";
+    saveStores(); recompute();
+  };
+  td.appendChild(i); return td;
+}
+function openStores(){ renderStores(); openDrawer("V"); }
+
 /* ---------------------- logic drawer ---------------------- */
 function renderRules(){
   const host = $("#rules"); host.innerHTML="";
@@ -2150,6 +2335,7 @@ async function loadStoresFile(file){
   });
   STORES = m;
   SRC.stores = file.name+" — "+m.size+" sites";
+  saveStores();   // from here the master lives on this browser, editable in place
   const found = Object.keys(dayCols);
   const multi = found.filter(d=>dayCols[d].length>1);
   const seen = new Set();
@@ -2667,9 +2853,10 @@ function closeDrawer(k){ $("#scrim"+k).classList.remove("on"); $("#drawer"+k).cl
 document.querySelectorAll("[data-close]").forEach(b=> b.onclick = ()=>closeDrawer(b.dataset.close));
 $("#scrimU").onclick = ()=>closeDrawer("U");
 $("#scrimS").onclick = ()=>closeDrawer("S");
+$("#scrimV").onclick = ()=>closeDrawer("V");
 $("#scrimL").onclick = ()=>closeDrawer("L");
 $("#scrimT").onclick = ()=>closeDrawer("T");
-document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ closeDrawer("U"); closeDrawer("L"); closeDrawer("T"); closeDrawer("S"); }});
+document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ closeDrawer("U"); closeDrawer("L"); closeDrawer("T"); closeDrawer("S"); closeDrawer("V"); }});
 
 $("#btnTeams").onclick = ()=>{
   $("#teamsMsg").value = buildTeamsMessage();
@@ -2694,6 +2881,45 @@ $("#btnUpload").onclick = ()=>openDrawer("U");
 $("#btnUpload2").onclick = ()=>openDrawer("U");
 $("#btnLogic").onclick = ()=>{ renderRules(); renderCodes(); syncLogicInputs(); openDrawer("L"); };
 $("#btnSettings").onclick = ()=>{ syncSettingsInputs(); openDrawer("S"); };
+$("#btnStores").onclick  = openStores;
+$("#btnStores2").onclick = ()=>{ closeDrawer("U"); openStores(); };
+$("#btnStoreFromFile").onclick = ()=>{ closeDrawer("V"); openDrawer("U"); };
+$("#storeFind").oninput = renderStores;
+$("#storeOnlyGaps").onchange = renderStores;
+$("#btnStoreAdd").onclick = ()=>{
+  const code = (prompt("Site code for the new store?") || "").trim();
+  if(!code) return;
+  if(STORES.has(code)){
+    alert("Site "+code+" is already in the master.");
+    $("#storeFind").value = code; renderStores(); return;
+  }
+  STORES.set(code, { site:code, grade:"", name:"", bu:"", cutoff:"", days:{} });
+  saveStores();
+  $("#storeFind").value = code; $("#storeOnlyGaps").checked = false;
+  renderStores(); recompute();
+  const first = $("#storeTable").querySelector("tbody input");
+  if(first) first.focus();
+};
+$("#btnStoreExport").onclick = ()=>download(
+  new Blob([JSON.stringify({src:SRC.stores, sites:storesToPlain()}, null, 2)], {type:"application/json"}),
+  "store-master-"+stamp()+".json");
+$("#btnStoreImport").onclick = ()=>$("#fileStoresJson").click();
+$("#fileStoresJson").onchange = e=>{
+  const f = e.target.files[0]; e.target.value = "";
+  if(!f) return;
+  const fr = new FileReader();
+  fr.onload = ev=>{
+    try{
+      const p = JSON.parse(ev.target.result);
+      const m = storesFromPlain(p && (p.sites || p));
+      if(!m.size) throw 0;
+      STORES = m;
+      SRC.stores = f.name+" — "+m.size+" sites";
+      saveStores(); renderStores(); recompute();
+    }catch(err){ alert("That file is not a store master export."); }
+  };
+  fr.readAsText(f);
+};
 $("#btnExport").onclick = exportCsv;
 $("#btnTheme").onclick = ()=>{
   const cur = document.documentElement.getAttribute("data-theme");
@@ -2878,5 +3104,9 @@ tickClock(); setInterval(tickClock, 1000);
 setInterval(recompute, 30000);
 
 loadSample();
+// A master that was uploaded or edited here takes over from the demo sites, so a
+// screen set up once comes back ready rather than asking for the file again.
+const savedStores = loadStores();
+if(savedStores){ STORES = savedStores.map; SRC.stores = savedStores.src; }
 recompute();
 </script>

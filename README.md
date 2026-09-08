@@ -12,6 +12,9 @@ delivery is due to be packed, and shows what is about to breach.
 
 - **Rules engine** — the first matching rule sets a document's TAT and where its
   clock starts (order stamp, a fixed cut-off, or the store's own cut-off calendar).
+- **Store master** — the cut-off calendar is edited on the board: add or remove a
+  site, set which weekdays it takes an order and at what code. Kept per browser,
+  so it is loaded once rather than re-uploaded.
 - **Status bands** — out of TAT, and three warning bands you set in hours or as a
   percentage of the TAT.
 - **Working list** — ordered so whatever breaches next is at the top; anything
@@ -46,10 +49,14 @@ has them, keep the JSON on your shared drive, and import it on each screen.
 2. **TAT logic → Import** → pick your `picking-tat-logic.json`. This replaces
    every rule, status band and cut-off code in one step, and the browser
    remembers it from then on. Do this once per screen.
-3. **Upload** → drop in the picking extract and the store cut-off master.
+3. **Edit stores** → load your cut-off master once, from the file or from a
+   `store-master.json` export. It is then kept on that browser and edited in
+   place — add a site, change a weekday cut-off, drop a site — so the file never
+   needs uploading again.
+4. **Upload** → drop in the picking extract.
    Columns are matched by header name, so extra columns and a different order
    are fine.
-4. **Display** → put it on the wall screen.
+5. **Display** → put it on the wall screen.
 
 To change the policy later, edit it under **TAT logic**, press **Export JSON**,
 and put the new file on the shared drive for the other screens to pick up.
