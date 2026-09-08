@@ -772,6 +772,10 @@ tr.grouphead td{padding:0!important;background:var(--surface-2);border-bottom:1p
       <div class="dropz" id="dzOrders"><div class="t">Drop the picking file here, or click to browse</div><div class="s">.xlsx, .xls or .csv &mdash; read in your browser, nothing is uploaded anywhere</div></div>
       <input type="file" id="fileOrders" accept=".xlsx,.xls,.csv">
       <div class="tiny" id="ordersInfo"></div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn ghost" id="btnForgetOrders">Forget the loaded extract</button>
+        <span class="hint">Clears it from this browser and puts the demo back.</span>
+      </div>
     </div>
     <div class="sect">
       <h3>2 &middot; Store cut-off master <span style="color:var(--text-3);font-weight:400">recommended</span></h3>
@@ -796,7 +800,7 @@ tr.grouphead td{padding:0!important;background:var(--surface-2);border-bottom:1p
       </div>
     </div>
   </div>
-  <div class="drawer-f"><button class="btn primary" data-close="U">Done</button><span class="hint">Files stay on this machine. Documents you have marked complete are kept.</span></div>
+  <div class="drawer-f"><button class="btn primary" data-close="U">Done</button><span class="hint">Files stay on this machine. What you load is kept on this browser, so a refresh comes back to the same board.</span></div>
 </div>
 
 <!-- ============ TEAMS ============ -->
@@ -1187,6 +1191,68 @@ function loadDone(){
 }
 function saveDone(){
   try{ localStorage.setItem("pickTat.done.v1", JSON.stringify(Object.fromEntries(DONE))); }catch(e){}
+}
+
+/* A refresh, a screen that reboots overnight, a browser that reloads the tab on its
+   own — none of those should send a wall board back to demo data. The extract is kept
+   here as rows of raw cell values, exactly as they were read, so it recomputes on the
+   way back in against whatever the rules say by then.
+
+   Stored as arrays rather than objects: on a few thousand documents the key names
+   would otherwise be most of the payload. Dates are the one value JSON cannot carry
+   back intact, so they travel as an epoch marker. */
+const ORDER_KEYS = ["createdOn","createdAt","releaseDate","releaseTime","procType","doc",
+                    "wave","bu","status","shipTo","shipToName","scenario","grade"];
+let ORDERS_UNSAVED = false;
+function ordersToPlain(){
+  return ORDERS.map(o=>ORDER_KEYS.map(k=>{
+    const v = o[k];
+    if(v instanceof Date) return isNaN(v) ? "" : {$d:v.getTime()};
+    return v === undefined || v === null ? "" : v;
+  }));
+}
+function ordersFromPlain(rows){
+  return rows.map(r=>{
+    const o = {};
+    ORDER_KEYS.forEach((k,i)=>{
+      const v = r[i];
+      o[k] = (v && typeof v === "object" && v.$d != null) ? new Date(v.$d) : v;
+    });
+    return o;
+  });
+}
+function saveOrders(){
+  ORDERS_UNSAVED = false;
+  if(!ORDERS.length || SRC.sample){ try{ localStorage.removeItem("pickTat.orders.v1"); }catch(e){} return; }
+  try{
+    localStorage.setItem("pickTat.orders.v1", JSON.stringify(
+      { src:SRC.orders, at:LOADED_AT, rows:ordersToPlain() }));
+  }catch(e){
+    // Past the browser's quota. Keeping the board working on the data in hand beats
+    // failing the upload — but say so, because a refresh will lose it.
+    try{ localStorage.removeItem("pickTat.orders.v1"); }catch(e2){}
+    ORDERS_UNSAVED = true;
+  }
+}
+function loadOrders(){
+  try{
+    const raw = localStorage.getItem("pickTat.orders.v1");
+    if(!raw) return null;
+    const p = JSON.parse(raw);
+    if(!p || !Array.isArray(p.rows) || !p.rows.length) return null;
+    return { rows:ordersFromPlain(p.rows),
+             src:p.src || (p.rows.length+" documents kept here"),
+             at:Number(p.at) || Date.now() };
+  }catch(e){ return null; }
+}
+function forgetOrders(){
+  try{ localStorage.removeItem("pickTat.orders.v1"); }catch(e){}
+  ORDERS_UNSAVED = false;
+  loadSample();
+  const st = loadStores();
+  if(st){ STORES = st.map; SRC.stores = st.src; }
+  expanded.clear(); ALARMED.clear(); wallPage = 0;
+  recompute();
 }
 
 /* The store master is edited on the board, not only uploaded, so it has to outlive
@@ -1843,6 +1909,7 @@ function render(){
   const noRef = ALL.filter(r=>r.ref==null).length;
   const noStart = ALL.filter(r=>r.ref!=null && r.start==null).length;
   if(CFG.placeholder) addNotice(nz,"<b>Placeholder rules.</b> Every TAT and cut-off time on this board is invented &mdash; the rule <i>shape</i> is right, the numbers are not. Load your own under <b>TAT logic &rsaquo; Import</b>, or set them by hand there; either clears this notice.", true);
+  if(ORDERS_UNSAVED) addNotice(nz,"<b>This extract is too large to keep on this browser.</b> The board works normally, but a refresh will lose it and it will have to be uploaded again.", true);
   if(SRC.sample) addNotice(nz,"<b>Demo data.</b> Sixteen invented documents against twelve invented sites, and a placeholder set of rules &mdash; enough to show what the board does, and none of it real. Use <b>Upload</b> for your own extract, and <b>TAT logic &rsaquo; Import</b> for your own rules.");
   if(missStore) addNotice(nz,"<b>"+missStore+" document"+(missStore>1?"s":"")+"</b> need a store cut-off row that is not in the master, so the rule's fallback cut-off was used. Look for the <span class='flag'>fallback</span> flag.");
   if(noStart) addNotice(nz,"<b>"+noStart+" document"+(noStart>1?"s":"")+"</b> found no cut-off in the next 14 days &mdash; check the weekday columns for those stores.", true);
@@ -2593,9 +2660,12 @@ async function loadOrdersFile(file){
   SRC.orders = file.name+" — "+ORDERS.length+" documents";
   SRC.sample = false;
   LOADED_AT = Date.now();
+  saveOrders();
   const missing = Object.keys(ORDER_COLS).filter(k=>t.map[k]===undefined);
   $("#ordersInfo").innerHTML = "Read <b>"+ORDERS.length+"</b> documents from sheet <code>"+esc(t.sheet)+"</code>."+
-    (missing.length ? " Columns not found: <code>"+missing.join("</code> <code>")+"</code>." : " All expected columns found.");
+    (missing.length ? " Columns not found: <code>"+missing.join("</code> <code>")+"</code>." : " All expected columns found.")+
+    (ORDERS_UNSAVED ? " <b>Too large to keep on this browser</b> — it will need uploading again after a refresh."
+                    : " Kept on this browser, so a refresh keeps it.");
 }
 async function loadStoresFile(file){
   const wb = await readWorkbook(file);
@@ -3184,6 +3254,11 @@ $("#btnUpload").onclick = ()=>openDrawer("U");
 $("#btnUpload2").onclick = ()=>openDrawer("U");
 $("#btnLogic").onclick = ()=>{ renderRules(); renderCodes(); syncLogicInputs(); openDrawer("L"); };
 $("#btnSettings").onclick = ()=>{ syncSettingsInputs(); openDrawer("S"); };
+$("#btnForgetOrders").onclick = ()=>{
+  if(!confirm("Clear the loaded extract from this browser and go back to demo data?")) return;
+  forgetOrders();
+  $("#ordersInfo").textContent = "";
+};
 $("#btnStores").onclick  = openStores;
 $("#btnStores2").onclick = ()=>{ closeDrawer("U"); openStores(); };
 $("#btnStoreFromFile").onclick = ()=>{ closeDrawer("V"); openDrawer("U"); };
@@ -3431,5 +3506,14 @@ loadSample();
 // screen set up once comes back ready rather than asking for the file again.
 const savedStores = loadStores();
 if(savedStores){ STORES = savedStores.map; SRC.stores = savedStores.src; }
+// And the extract likewise: a refresh should come back to the same board, not to
+// demo data with the real numbers quietly gone.
+const savedOrders = loadOrders();
+if(savedOrders){
+  ORDERS = savedOrders.rows;
+  SRC.orders = savedOrders.src;
+  SRC.sample = false;
+  LOADED_AT = savedOrders.at;
+}
 recompute();
 </script>
