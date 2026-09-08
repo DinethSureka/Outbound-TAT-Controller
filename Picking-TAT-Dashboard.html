@@ -861,9 +861,9 @@ tr.grouphead td{padding:0!important;background:var(--surface-2);border-bottom:1p
       </div>
       <div class="bandprev" id="bandPreview"></div>
       <div style="margin-top:13px;padding-top:12px;border-top:1px solid var(--line-soft)">
-        <label class="f" style="max-width:260px"><span>Cut-off grace, every rule</span>
+        <label class="f" style="max-width:280px"><span>Cut-off grace</span>
           <input type="number" id="optGraceAll" min="0" max="720" step="5">
-          <span class="fh">Minutes past a cut-off in which a document still makes it. At 30, one released 09:06 still starts from the 09:00; one released 09:45 waits for the next. Setting it here writes it to every rule at once.</span></label>
+          <span class="fh">Minutes past a cut-off in which a document still makes that cut-off. At 30, one released 09:06 starts from the 09:00; one released 09:45 waits for the next cut-off &mdash; the same day's later one if the store has it, otherwise tomorrow's.</span></label>
         <div class="tiny" id="graceMixed"></div>
       </div>
       <div style="display:flex;align-items:center;gap:.65em;margin-top:13px;padding-top:12px;border-top:1px solid var(--line-soft)">
@@ -1093,6 +1093,10 @@ function defaultConfig(){
     // Cleared by any imported rule file, so a board still on the delivered numbers
     // can say so rather than looking authoritative.
     placeholder: true,
+    // Minutes past a cut-off in which a document still makes that cut-off. One number
+    // for the whole board: it used to sit on each rule, where ten copies could drift
+    // apart and an old exported file could quietly put them all back to nothing.
+    grace: 30,
     dateFmt:"DMY", refSrc:"releaseElseCreated",
     bandMode:"hrs", bands:{e1:1, e2:3, e3:6}, rowFill:true,
     // A tone at the moment of breach is a tone too late to act on, so the board can
@@ -1174,6 +1178,10 @@ function migrate(c){
   c.wall  = Object.assign(d.wall,  c.wall  || {});
   if(!Array.isArray(c.wall.statuses) || !c.wall.statuses.length) c.wall.statuses = d.wall.statuses.slice();
   if(typeof c.groupOut !== "boolean") c.groupOut = d.groupOut;
+  // Rule files exported before the grace moved carry it per rule, and one of those
+  // exports carried zero. Only a top-level value counts now; anything else takes
+  // the delivered 30, so no old file can silently switch the window off.
+  if(!Number.isFinite(Number(c.grace)) || Number(c.grace) < 0) c.grace = d.grace;
   if(typeof c.groupOutOpen !== "boolean") c.groupOutOpen = d.groupOutOpen;
   if(!(Number(c.version) >= 5)){
     if(c.doneRule === "manual") c.doneRule = "manualOrStatus";
@@ -1505,10 +1513,16 @@ function timesFor(rl, store, weekday, cm){
   if(!(rl.days||[]).includes(weekday)) return [];
   return [...new Set(splitList(rl.times).map(hhmmToSecs).filter(t=>t!=null))].sort((a,b)=>a-b);
 }
+// Undefined, blank or nonsense reads as the delivered 30 rather than as nothing:
+// a silent zero turns every document released a minute late into a whole day late.
+function graceMins(){
+  const v = Number(CFG.grace);
+  return Number.isFinite(v) && v >= 0 ? v : 30;
+}
 function resolveStart(ref, rl, store, cm){
   if(rl.start === "immediate") return { at:ref, note:"clock starts at the order stamp" };
-  const grace = (Number(rl.grace)||0)*60000;
-  const graceMin = Math.round(grace/60000);
+  const graceMin = graceMins();
+  const grace = graceMin*60000;
   const base = dayStartOf(ref);
   const usedFallback = rl.start === "store" && !store;
   const eff = usedFallback ? Object.assign({}, rl, {start:"cutoff"}) : rl;
@@ -1656,7 +1670,7 @@ function compute(){
       procType:String(o.procType||""), status:String(o.status||""),
       created, released, ref, refKind, start, startNote, expected, remaining, tat,
       ruleName: rl?rl.name:"no rule matched", ruleStart: rl?rl.start:"",
-      grace: rl ? (Number(rl.grace)||0) : 0,
+      grace: graceMins(),
       storeFound:!!store, needsStore: !!(rl && rl.start==="store"), fallback,
       done, doneAt: DONE.get(String(o.doc)) || null, manualDone: DONE.has(String(o.doc)),
       bucket: done ? "done" : bucketOf(remaining, tat)
@@ -2400,7 +2414,6 @@ function renderRules(){
     }
     if(rl.start !== "immediate"){
       b.appendChild(field(rl.start==="store"?"Fallback cut-off times":"Cut-off times", rl.times, v=>rl.times=v, "09:00, 19:00"));
-      b.appendChild(numField("Grace minutes", rl.grace, v=>rl.grace=v, "Orders arriving this long after a cut-off still make it."));
       const df = el("div","f");
       df.innerHTML = "<span>"+(rl.start==="store"?"Fallback days":"Days with a cut-off")+"</span>";
       const dd = el("div","days");
@@ -2544,12 +2557,11 @@ function renderCodes(){
 // Rules can each carry their own grace, but on a real floor it is one number. Show
 // the common one, and say so when they have drifted apart.
 function syncGraceAll(){
-  const gated = CFG.rules.filter(r=>r.start !== "immediate");
-  const vals = [...new Set(gated.map(r=>Number(r.grace)||0))];
-  $("#optGraceAll").value = vals.length === 1 ? vals[0] : (gated.length ? "" : 0);
-  $("#graceMixed").innerHTML = vals.length > 1
-    ? "Rules currently disagree: <b>"+vals.sort((a,b)=>a-b).join("</b>, <b>")+"</b> minutes. Type a number above to settle them all on it."
-    : (gated.length ? "" : "No rule resolves a cut-off, so grace does not apply.");
+  $("#optGraceAll").value = graceMins();
+  const gated = CFG.rules.filter(r=>r.start !== "immediate").length;
+  $("#graceMixed").innerHTML = gated
+    ? "Applies to all <b>"+gated+"</b> rules that resolve a cut-off."
+    : "No rule resolves a cut-off, so grace does not apply.";
 }
 function renderBandPreview(){
   const L = bandLabels(), host = $("#bandPreview"); host.innerHTML="";
@@ -3368,12 +3380,8 @@ $("#optAlarmLead").oninput = e=>{
 $("#optAlarmRepeat").onchange = e=>{ CFG.alarmRepeat=Number(e.target.value)||0; saveCfg(); };
 $("#optGraceAll").oninput = e=>{
   if(e.target.value === "") return;
-  const v = Math.max(0, Math.min(720, Math.round(Number(e.target.value) || 0)));
-  CFG.rules.forEach(r=>{ if(r.start !== "immediate") r.grace = v; });
-  CFG.placeholder = false; saveCfg();
-  $("#graceMixed").innerHTML = "";
-  if($("#drawerL").classList.contains("on")) renderRules();
-  recompute();
+  CFG.grace = Math.max(0, Math.min(720, Math.round(Number(e.target.value) || 0)));
+  saveCfg(); recompute();
 };
 $("#optRowFill").onclick = ()=>{ CFG.rowFill = !CFG.rowFill;
   $("#optRowFill").setAttribute("aria-checked", CFG.rowFill?"true":"false"); saveCfg(); recompute(); };
