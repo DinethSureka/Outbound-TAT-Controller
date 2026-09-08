@@ -1,0 +1,16 @@
+# Source extracts stay off GitHub — they are operational data, not code.
+*.xlsx
+*.xls
+*.csv
+
+# Office lock files and OneDrive leftovers
+~$*
+.~lock.*
+desktop.ini
+
+# Local agent/editor state
+.claude/
+
+# Your real TAT policy — rules, bands and cut-off codes. Exported from the board
+# and imported back on each screen; it is operational policy, not code.
+picking-tat-logic.json

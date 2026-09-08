@@ -1,0 +1,2839 @@
+<meta charset="utf-8">
+<title>Picking TAT Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+:root{
+  --bg:#E7EAEC; --surface:#FFFFFF; --surface-2:#F2F4F6; --surface-3:#E9EDEF;
+  --line:#C7CFD5; --line-soft:#DCE2E6;
+  --text:#0F171E; --text-2:#4B5A66; --text-3:#78868F;
+  --accent:#14608F; --accent-soft:#DCEAF3; --accent-line:#9CC4DD;
+  --out:#A61E15;    --out-bg:#F7DDDA;   --out-line:#DE9C95;
+  --crit:#B8541A;   --crit-bg:#F8E4D3;  --crit-line:#E0A377;
+  --warn:#8A6400;   --warn-bg:#F5EBCD;  --warn-line:#D8BE72;
+  --ok:#116B45;     --ok-bg:#DCEEE5;    --ok-line:#8CC9AF;
+  --calm:#4E6070;   --calm-bg:#E4E9ED;  --calm-line:#AFBDC7;
+  --done:#5B6874;   --done-bg:#E3E7EA;  --done-line:#B9C2C9;
+  --shadow:0 1px 2px rgba(15,23,30,.06), 0 6px 20px -12px rgba(15,23,30,.28);
+  /* row fill tints — kept low so the text on top stays the primary channel */
+  --f-out:rgba(166,30,21,.21); --f-h1:rgba(184,84,26,.20); --f-h3:rgba(138,100,0,.20);
+  --f-h6:rgba(17,107,69,.16); --f-safe:rgba(78,96,112,.11);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1319; --surface:#161E26; --surface-2:#1B242E; --surface-3:#212C37;
+    --line:#2E3A46; --line-soft:#232E38;
+    --text:#E6EDF2; --text-2:#9CABB7; --text-3:#74838E;
+    --accent:#6BB6E8; --accent-soft:#15303F; --accent-line:#2A5570;
+    --out:#F2837A;    --out-bg:#3A1A17;  --out-line:#6E2F29;
+    --crit:#F09A5F;   --crit-bg:#372113; --crit-line:#6B3F20;
+    --warn:#E0BA55;   --warn-bg:#2F2712; --warn-line:#5C4A1C;
+    --ok:#5CC194;     --ok-bg:#103125;   --ok-line:#245943;
+    --calm:#8FA3B3;   --calm-bg:#1E2831; --calm-line:#38454F;
+    --done:#8B99A5;   --done-bg:#202A34; --done-line:#39454F;
+    --f-out:rgba(242,131,122,.20); --f-h1:rgba(240,154,95,.17); --f-h3:rgba(224,186,85,.15);
+    --f-h6:rgba(92,193,148,.15); --f-safe:rgba(143,163,179,.11);
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -14px rgba(0,0,0,.8);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+    --bg:#0D1319; --surface:#161E26; --surface-2:#1B242E; --surface-3:#212C37;
+    --line:#2E3A46; --line-soft:#232E38;
+    --text:#E6EDF2; --text-2:#9CABB7; --text-3:#74838E;
+    --accent:#6BB6E8; --accent-soft:#15303F; --accent-line:#2A5570;
+    --out:#F2837A;    --out-bg:#3A1A17;  --out-line:#6E2F29;
+    --crit:#F09A5F;   --crit-bg:#372113; --crit-line:#6B3F20;
+    --warn:#E0BA55;   --warn-bg:#2F2712; --warn-line:#5C4A1C;
+    --ok:#5CC194;     --ok-bg:#103125;   --ok-line:#245943;
+    --calm:#8FA3B3;   --calm-bg:#1E2831; --calm-line:#38454F;
+    --done:#8B99A5;   --done-bg:#202A34; --done-line:#39454F;
+    --f-out:rgba(242,131,122,.20); --f-h1:rgba(240,154,95,.17); --f-h3:rgba(224,186,85,.15);
+    --f-h6:rgba(92,193,148,.15); --f-safe:rgba(143,163,179,.11);
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -14px rgba(0,0,0,.8);
+    color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:13px; line-height:1.45; -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{font-family:Archivo,"IBM Plex Sans",sans-serif;margin:0;text-wrap:balance}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.wrap{max-width:1680px;margin:0 auto;padding:0 18px 56px}
+
+.topbar{position:sticky;top:0;z-index:40;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:var(--shadow)}
+.topbar-in{max-width:1680px;margin:0 auto;padding:9px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:9px;margin-right:auto}
+.brand h1{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.brand .sub{font-size:10.5px;color:var(--text-3);font-family:Archivo,sans-serif;letter-spacing:.09em;text-transform:uppercase;font-weight:600}
+.clock{display:flex;align-items:center;gap:7px;padding:4px 10px;border:1px solid var(--line);border-radius:4px;background:var(--surface-2)}
+.clock .dot{width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px var(--ok-bg)}
+.clock .t{font-family:"IBM Plex Mono",monospace;font-size:12.5px;font-weight:500;font-variant-numeric:tabular-nums}
+.clock .z{font-size:9.5px;color:var(--text-3);letter-spacing:.06em;text-transform:uppercase}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:4px;border:1px solid var(--line);
+  background:var(--surface);color:var(--text);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:background .12s,border-color .12s}
+.btn:hover{background:var(--surface-2);border-color:var(--text-3)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--text-2)}
+.btn.ghost:hover{background:var(--surface-2);color:var(--text)}
+.btn svg{width:13px;height:13px;flex:none}
+.btn.alarm-on{background:var(--out-bg);border-color:var(--out-line);color:var(--out)}
+
+.srcbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;margin:14px 0 0;
+  background:var(--surface);border:1px solid var(--line);border-radius:6px}
+.src{display:flex;align-items:center;gap:8px;padding:3px 9px 3px 3px;border:1px solid var(--line-soft);border-radius:4px;background:var(--surface-2)}
+.src .tag{font-family:Archivo,sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:3px 6px;border-radius:3px;background:var(--surface-3);color:var(--text-2)}
+.src .nm{font-size:11.5px;color:var(--text-2);max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.src.loaded .tag{background:var(--accent-soft);color:var(--accent)}
+.src.sample .tag{background:var(--warn-bg);color:var(--warn)}
+.hint{font-size:11.5px;color:var(--text-3)}
+.srcbar .spacer{margin-left:auto}
+
+.notice{display:flex;gap:9px;align-items:flex-start;padding:9px 12px;margin-top:10px;border-radius:6px;
+  background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--warn);font-size:12px}
+.notice.err{background:var(--out-bg);border-color:var(--out-line);color:var(--out)}
+
+/* ---- signal strip ---- */
+.signal{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:14px}
+@media(max-width:1150px){.signal{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:640px){.signal{grid-template-columns:repeat(2,1fr)}}
+.sig{position:relative;text-align:left;padding:11px 13px 12px;border-radius:6px;cursor:pointer;
+  background:var(--surface);border:1px solid var(--line);overflow:hidden;transition:border-color .12s}
+.sig:hover{border-color:var(--text-3)}
+.sig[aria-pressed="true"]{border-color:var(--sc);box-shadow:inset 0 0 0 1px var(--sc)}
+.sig::before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--sc)}
+.sig .lbl{font-family:Archivo,sans-serif;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--sc);display:block}
+.sig .n{font-family:"IBM Plex Mono",monospace;font-size:30px;font-weight:500;line-height:1.05;margin-top:5px;font-variant-numeric:tabular-nums;letter-spacing:-.02em;display:block}
+.sig .meta{font-size:10.5px;color:var(--text-3);margin-top:2px;display:block}
+.sig.s-out{--sc:var(--out)} .sig.s-h1{--sc:var(--crit)} .sig.s-h3{--sc:var(--warn)}
+.sig.s-h6{--sc:var(--ok)} .sig.s-safe{--sc:var(--calm)} .sig.s-done{--sc:var(--done)}
+.sig.s-out .n{color:var(--out)}
+@keyframes pulse{0%,100%{box-shadow:inset 0 0 0 1px var(--out),0 0 0 0 rgba(166,30,21,0)}50%{box-shadow:inset 0 0 0 1px var(--out),0 0 0 5px rgba(166,30,21,.16)}}
+.sig.s-out.live{animation:pulse 2s ease-in-out infinite}
+
+/* ---- panels ---- */
+.grid2{display:grid;grid-template-columns:1.25fr 1fr;gap:12px;margin-top:12px}
+@media(max-width:1050px){.grid2{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:13px 14px 15px;min-width:0}
+.panel-h{display:flex;align-items:baseline;gap:10px;margin-bottom:11px;flex-wrap:wrap}
+.panel-h h2{font-size:12.5px;font-weight:600}
+.panel-h .note{font-size:11px;color:var(--text-3);margin-left:auto}
+.minisel{border:1px solid var(--line);background:var(--surface-2);border-radius:3px;padding:2px 5px;font-size:11.5px}
+
+/* count matrix */
+.mxwrap{overflow-x:auto}
+table.mx{border-collapse:collapse;width:100%;font-size:12px}
+table.mx th{font-family:Archivo,sans-serif;font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--text-3);text-align:right;padding:5px 7px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.mx th:first-child{text-align:left}
+table.mx td{padding:4px 7px;text-align:right;border-bottom:1px solid var(--line-soft);
+  font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+table.mx td:first-child{text-align:left;font-family:"IBM Plex Sans",sans-serif;color:var(--text-2);
+  max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+table.mx td.z{color:var(--text-3);opacity:.4}
+table.mx td.hit{cursor:pointer;border-radius:3px}
+table.mx td.hit:hover{background:var(--surface-3);color:var(--text)}
+table.mx tr.tot td{border-bottom:0;border-top:1px solid var(--line);font-weight:600;color:var(--text)}
+table.mx td.c-out{color:var(--out)} table.mx td.c-h1{color:var(--crit)}
+table.mx td.c-h3{color:var(--warn)} table.mx td.c-h6{color:var(--ok)}
+table.mx td.c-safe{color:var(--calm)} table.mx td.c-done{color:var(--done)}
+table.mx td.tt{font-weight:600;color:var(--text)}
+
+/* histogram */
+.hist{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;align-items:end;height:128px;padding-top:4px}
+.hcol{display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:4px;text-align:center}
+.hcol .hb{border-radius:2px 2px 0 0;min-height:2px}
+.hcol .hn{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:500;color:var(--text-2)}
+.hlabels{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-top:6px}
+.hlabels div{font-size:9.5px;color:var(--text-3);text-align:center;font-family:"IBM Plex Mono",monospace}
+
+/* ---- filters ---- */
+.filters{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-top:14px}
+.fld{display:flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:0 4px 0 8px;height:29px}
+.fld label{font-family:Archivo,sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3)}
+.fld select,.fld input{border:0;background:transparent;font-size:12px;padding:4px 2px;min-width:76px;outline:none}
+.fld input{min-width:190px}
+.fld:focus-within{border-color:var(--accent)}
+.count{margin-left:auto;font-size:11.5px;color:var(--text-3)}
+.count b{color:var(--text);font-weight:600;font-family:"IBM Plex Mono",monospace}
+
+/* ---- table ---- */
+.tablewrap{margin-top:9px;background:var(--surface);border:1px solid var(--line);border-radius:6px;overflow:auto;max-height:68vh}
+/* The table states its own base type instead of inheriting it — the page is wrapped
+   differently as a local file, as an artifact, and in a preview. Set on the table, not
+   on the cells, so each column's own rule still wins on specificity. */
+table.grid{border-collapse:separate;border-spacing:0;width:100%;min-width:1150px;
+  font-family:"IBM Plex Sans",sans-serif;font-size:11.5px;color:var(--text)}
+table.grid thead th{position:sticky;top:0;z-index:2;background:var(--surface-2);
+  font-family:Archivo,sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--text-3);text-align:left;padding:8px 9px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
+table.grid thead th:hover{color:var(--text)}
+table.grid thead th.num{text-align:right}
+table.grid thead th.act{cursor:default;text-align:center}
+table.grid tbody td{padding:5px 9px;border-bottom:1px solid var(--line-soft);vertical-align:middle;white-space:nowrap}
+/* BU, scenario: short uppercase codes, sized with the rest of the row */
+td.cat{color:var(--text-2);letter-spacing:.02em}
+/* Hover and selection paint the ROW, not the cells, so the time-fill gradient
+   underneath stays visible instead of being covered by opaque cell backgrounds. */
+table.grid tbody tr:hover{background-color:var(--surface-2)}
+table.grid tbody tr.sel{background-color:var(--accent-soft)}
+
+/* Time-used fill: the row fills left-to-right as the TAT is consumed, so how far
+   through an OBD is reads at a glance. --fp is set per row from elapsed time. */
+table.grid tbody tr.fill{
+  background-image:linear-gradient(90deg,
+    var(--fc) 0, var(--fc) calc(var(--fp) - 1.2%), transparent var(--fp), transparent 100%);
+  background-repeat:no-repeat;
+}
+tr.fill.r-out{--fc:var(--f-out)} tr.fill.r-h1{--fc:var(--f-h1)}
+tr.fill.r-h3{--fc:var(--f-h3)} tr.fill.r-h6{--fc:var(--f-h6)}
+tr.fill.r-safe{--fc:var(--f-safe)}
+td.num{text-align:right}
+td.doc{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:500}
+td.store .cd{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--text-2)}
+td.store .nm{font-size:11px;color:var(--text-3);max-width:200px;overflow:hidden;text-overflow:ellipsis;display:block}
+td.time{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--text-2);font-variant-numeric:tabular-nums}
+td.rem{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.stripe{width:3px!important;padding:0!important;border-bottom:1px solid var(--line-soft)}
+tr.r-out .stripe{background:var(--out)} tr.r-h1 .stripe{background:var(--crit)}
+tr.r-h3 .stripe{background:var(--warn)} tr.r-h6 .stripe{background:var(--ok)}
+tr.r-safe .stripe{background:var(--calm)} tr.r-done .stripe{background:var(--done-line)}
+tr.r-out td.rem{color:var(--out)} tr.r-h1 td.rem{color:var(--crit)}
+tr.r-h3 td.rem{color:var(--warn)} tr.r-h6 td.rem{color:var(--ok)}
+tr.r-safe td.rem{color:var(--calm)} tr.r-done td.rem{color:var(--text-3);font-weight:400}
+tr.r-out td.doc{color:var(--out)}
+tr.r-done td.doc,tr.r-done td.store .cd{opacity:.72}
+
+.pill{display:inline-block;padding:2px 7px;border-radius:3px;font-family:Archivo,sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border:1px solid transparent;white-space:nowrap}
+.p-out{background:var(--out-bg);color:var(--out);border-color:var(--out-line)}
+.p-h1{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+.p-h3{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-line)}
+.p-h6{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+.p-safe{background:var(--calm-bg);color:var(--calm);border-color:var(--calm-line)}
+.p-done{background:var(--done-bg);color:var(--done);border-color:var(--done-line)}
+.chip{display:inline-block;padding:1px 6px;border-radius:3px;background:var(--surface-3);color:var(--text-2);font-size:10.5px;font-family:"IBM Plex Mono",monospace}
+.flag{display:inline-block;margin-left:5px;padding:1px 5px;border-radius:3px;background:var(--warn-bg);color:var(--warn);font-size:9.5px;font-family:Archivo,sans-serif;font-weight:600;cursor:help}
+
+.doneBtn{padding:3px 9px;border-radius:3px;border:1px solid var(--line);background:var(--surface);
+  font-size:11px;font-weight:500;cursor:pointer;color:var(--text-2);white-space:nowrap}
+.doneBtn:hover{border-color:var(--ok);color:var(--ok);background:var(--ok-bg)}
+.doneBtn.is-done{border-color:var(--done-line);background:var(--done-bg);color:var(--done)}
+.doneBtn.is-done:hover{border-color:var(--out-line);color:var(--out);background:var(--out-bg)}
+
+tr.detail td{background:var(--surface-2);padding:0;border-bottom:1px solid var(--line)}
+.trace{display:flex;flex-wrap:wrap}
+.trace .step{flex:1 1 185px;min-width:165px;padding:10px 13px;border-right:1px solid var(--line-soft)}
+.trace .step:last-child{border-right:0}
+.trace .step .st-k{font-family:Archivo,sans-serif;font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+.trace .step .st-v{font-family:"IBM Plex Mono",monospace;font-size:12px;margin-top:3px;color:var(--text);white-space:normal}
+.trace .step .st-n{font-size:11px;color:var(--text-3);margin-top:2px;white-space:normal}
+
+.empty{padding:52px 20px;text-align:center;color:var(--text-3)}
+.empty h3{font-size:14px;color:var(--text-2);margin-bottom:5px}
+
+.foot{display:flex;flex-wrap:wrap;gap:7px;align-items:center;justify-content:center;
+  margin-top:18px;padding-top:14px;border-top:1px solid var(--line);
+  font-family:Archivo,sans-serif;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-3)}
+.foot b{color:var(--text-2);font-weight:600}
+.foot .sep{opacity:.5}
+
+/* ================= WALLBOARD — built for a screen running unattended =================
+   Always dark: lower glare in a warehouse office, and far less panel wear over 24h.
+   Sized in em off one viewport-scaled root so it fills any monitor from 24" to 75". */
+.wall{
+  position:fixed; inset:0; z-index:70; display:none; flex-direction:column;
+  background:#0A0F14; color:#E8EFF4;
+  font-family:"IBM Plex Sans",sans-serif; font-size:clamp(13px,1.02vw,25px);
+  user-select:none; -webkit-user-select:none;
+  --w-out:#FF6B5E; --w-crit:#FF9F45; --w-warn:#F2C14E; --w-ok:#4ED9A0; --w-calm:#7E93A3; --w-done:#5A6875;
+  --w-line:#1C2731; --w-card:#111922; --w-dim:#7E8E9B;
+}
+.wall.on{display:flex}
+.wall.drift{animation:wdrift 900s ease-in-out infinite}
+@keyframes wdrift{0%,100%{transform:translate(0,0)}25%{transform:translate(4px,3px)}50%{transform:translate(-3px,5px)}75%{transform:translate(5px,-4px)}}
+@media (prefers-reduced-motion:reduce){.wall.drift{animation:none}}
+.wall.alarmstate{box-shadow:inset 0 0 0 .18em rgba(255,107,94,.55)}
+
+/* ambient wash — takes its hue from the worst live status, very low and very slow */
+.wall-amb{position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.5;
+  transition:background 2.5s ease;
+  background:radial-gradient(70% 55% at 18% 8%, var(--amb1), transparent 62%),
+             radial-gradient(60% 50% at 88% 92%, var(--amb2), transparent 60%)}
+.wall{--amb1:rgba(78,217,160,.07); --amb2:rgba(32,110,150,.07)}
+.wall.st-warn{--amb1:rgba(242,193,78,.09); --amb2:rgba(160,110,30,.07)}
+.wall.st-out{--amb1:rgba(255,107,94,.13); --amb2:rgba(150,40,34,.10)}
+.wall.noamb .wall-amb{display:none}
+.wall > *:not(.wall-amb){position:relative;z-index:1}
+@keyframes ambdrift{0%,100%{transform:scale(1) translate(0,0)}50%{transform:scale(1.08) translate(1.5%,1%)}}
+.wall-amb{animation:ambdrift 120s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.wall-amb{animation:none}}
+
+/* next-breach countdown in the header */
+.wall-next{display:flex;flex-direction:column;align-items:flex-end;gap:.15em;
+  padding:.4em .95em;border:1px solid var(--w-line);border-radius:.3em;background:#101922}
+.wall-next .k{font-family:Archivo,sans-serif;font-size:.62em;font-weight:700;letter-spacing:.16em;color:var(--w-dim);white-space:nowrap}
+.wall-next .v{font-family:"IBM Plex Mono",monospace;font-size:1.35em;font-weight:500;font-variant-numeric:tabular-nums;line-height:1}
+.wall-next.soon{border-color:#6B3F20;background:#221509}
+.wall-next.soon .v{color:var(--w-crit)}
+.wall-next.late{border-color:#6E2F29;background:#241110}
+.wall-next.late .v{color:var(--w-out)}
+.wall-next.none .v{color:var(--w-ok);font-size:1.05em}
+
+/* session trend */
+.wtrend{padding:.1em 1em .55em}
+.wtrend .lab{display:flex;align-items:baseline;gap:.5em;margin-bottom:.25em}
+.wtrend .lab b{font-family:Archivo,sans-serif;font-size:.62em;font-weight:700;letter-spacing:.15em;color:var(--w-dim)}
+.wtrend .lab span{font-family:"IBM Plex Mono",monospace;font-size:.72em;color:#8FA3B3;margin-left:auto}
+.wtrend svg{width:100%;height:3.1em;display:block;overflow:visible}
+
+.wall-top{display:flex;align-items:center;gap:1em;padding:.85em 1.4em;border-bottom:1px solid var(--w-line)}
+.wall-brand{font-family:Archivo,sans-serif;font-size:1.55em;font-weight:700;letter-spacing:.02em;line-height:1}
+.wall-brand span{display:block;font-size:.4em;font-weight:600;letter-spacing:.22em;color:var(--w-dim);margin-top:.45em}
+.wall-live{display:flex;align-items:center;gap:.45em;font-family:Archivo,sans-serif;font-size:.72em;font-weight:700;
+  letter-spacing:.19em;color:var(--w-ok);padding:.35em .8em;border:1px solid #1E4437;border-radius:.25em;background:#0C2018}
+.wall-live i{width:.5em;height:.5em;border-radius:50%;background:var(--w-ok);animation:wpulse 2.4s ease-in-out infinite}
+@keyframes wpulse{0%,100%{opacity:1}50%{opacity:.25}}
+.wall-clock{margin-left:auto;text-align:right;line-height:1}
+.wall-clock b{display:block;font-family:"IBM Plex Mono",monospace;font-size:2.5em;font-weight:500;
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.wall-clock span{display:block;font-family:Archivo,sans-serif;font-size:.72em;font-weight:600;
+  letter-spacing:.17em;color:var(--w-dim);margin-top:.5em}
+
+.wall-tiles{display:grid;grid-template-columns:repeat(6,1fr);gap:.6em;padding:.9em 1.4em}
+@media(max-width:1200px){.wall-tiles{grid-template-columns:repeat(3,1fr)}}
+.wtile{position:relative;border-radius:.35em;padding:.75em .9em .8em;overflow:hidden;
+  background:linear-gradient(158deg,#16202B 0%,#101822 62%,#0D141C 100%);
+  border:1px solid var(--w-line);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.055), 0 .35em 1.1em -.7em rgba(0,0,0,.9)}
+/* a faint sheen across the top-left gives the tiles a little physical depth */
+.wtile::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(120% 90% at 8% -20%, rgba(255,255,255,.055), transparent 60%)}
+.wtile::before{content:"";position:absolute;inset:0 auto 0 0;width:.2em;background:var(--c)}
+/* these labels differ only in their last word, so they must never be truncated */
+.wtile .k{font-family:Archivo,sans-serif;font-size:.7em;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--c);white-space:normal;line-height:1.2;min-height:2.4em}
+.wtile .v{font-family:"IBM Plex Mono",monospace;font-size:3.5em;font-weight:500;line-height:1;
+  margin-top:.12em;font-variant-numeric:tabular-nums;letter-spacing:-.035em}
+.wtile.hot{background:linear-gradient(158deg,#26100E 0%,#1A0C0B 60%,#150A09 100%);border-color:#6B2A23;
+  animation:whot 2.6s ease-in-out infinite}
+@keyframes whot{
+  0%,100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 0 0 0 rgba(255,107,94,0), 0 .35em 1.1em -.7em #000}
+  50%    {box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 0 2.2em -.4em rgba(255,107,94,.55), 0 .35em 1.1em -.7em #000}
+}
+.wtile.hot .v{animation:wblink 2.6s ease-in-out infinite}
+@keyframes wblink{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ---- live status ring ---- */
+.wring{display:flex;align-items:center;gap:.9em;padding:.3em 1em;flex:1}
+.wring svg{width:8.6em;height:8.6em;flex:none;overflow:visible}
+.wring .track{stroke:#16202A}
+.wring .seg{transition:stroke-dasharray .9s cubic-bezier(.4,0,.2,1), stroke-dashoffset .9s cubic-bezier(.4,0,.2,1)}
+.wring .ctr-n{font-family:"IBM Plex Mono",monospace;font-size:1.55em;font-weight:500;fill:#E8EFF4;
+  text-anchor:middle;dominant-baseline:central;font-variant-numeric:tabular-nums}
+.wring .ctr-l{font-family:Archivo,sans-serif;font-size:.5em;font-weight:700;letter-spacing:.19em;
+  fill:var(--w-dim);text-anchor:middle;dominant-baseline:central}
+.wleg{display:flex;flex-direction:column;gap:.28em;flex:1;min-width:0}
+.wlegrow{display:grid;grid-template-columns:.62em 1fr auto;gap:.55em;align-items:center}
+.wlegrow i{width:.62em;height:.62em;border-radius:.14em;background:var(--lc)}
+.wlegrow .t{font-size:.86em;color:#B7C6D2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wlegrow .n{font-family:"IBM Plex Mono",monospace;font-size:.9em;color:#E8EFF4;font-variant-numeric:tabular-nums}
+.wlegrow.zero{opacity:.4}
+
+/* ---- rows animate in as the list pages ---- */
+@keyframes rowin{from{transform:translateY(.55em)}to{transform:none}}
+table.wt tbody tr{animation:rowin .5s cubic-bezier(.2,.7,.3,1) both;animation-delay:calc(var(--i,0)*55ms)}
+
+/* ---- breach ticker ---- */
+.wticker{display:none;align-items:center;gap:1em;height:2.5em;overflow:hidden;
+  background:linear-gradient(90deg,#25100E,#1A0B0A);border-top:1px solid #5A241F}
+.wticker.on{display:flex}
+.wticker .tag{flex:none;padding:0 1.1em;height:100%;display:flex;align-items:center;gap:.5em;
+  background:var(--w-out);color:#1A0B0A;font-family:Archivo,sans-serif;font-size:.75em;font-weight:700;letter-spacing:.16em}
+.wticker .tag i{width:.5em;height:.5em;border-radius:50%;background:#1A0B0A;animation:wpulse 1.2s ease-in-out infinite}
+.wtrack{flex:1;overflow:hidden;position:relative}
+/* A fixed duration made the strip race whenever the backlog grew — the same 34s
+   had to cover twice the text. The duration is set from the measured width in
+   renderTicker instead, so the words cross the screen at a constant reading pace. */
+.wtrack .run{display:inline-flex;gap:2.4em;white-space:nowrap;padding-left:100%;
+  animation:wscroll var(--wdur,90s) linear infinite;font-family:"IBM Plex Mono",monospace;font-size:.95em;color:#FFC9C3}
+.wtrack .run b{color:#FF8C81;font-weight:600}
+@keyframes wscroll{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+
+@media (prefers-reduced-motion:reduce){
+  .wtile.hot,.wtile.hot .v,table.wt tbody tr,.wtrack .run,.wticker .tag i{animation:none}
+  .wring .seg{transition:none}
+  .wtrack .run{padding-left:0}
+}
+
+.wall-main{flex:1;display:grid;grid-template-columns:1.62fr 1fr;gap:.7em;padding:0 1.4em 1em;min-height:0}
+.wall-panel{background:var(--w-card);border:1px solid var(--w-line);border-radius:.35em;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.wall-panel > header{display:flex;align-items:baseline;gap:.7em;padding:.7em 1em;border-bottom:1px solid var(--w-line)}
+.wall-panel h2,.wall-panel h3{font-family:Archivo,sans-serif;font-size:.85em;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#C3D2DC}
+.wall-panel .pg{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:.78em;color:var(--w-dim)}
+/* all three share the column height — an auto row let the workload panel grow
+   past the viewport once the trend chart was added underneath the ring */
+.wall-side{display:grid;grid-template-rows:1.4fr .85fr 1fr;gap:.7em;min-height:0}
+.wall-side > .wall-panel{min-height:0}
+.wring{min-height:0}
+.wring svg{width:7em;height:7em}
+
+/* The table fills its panel so a short list still reads as a composed board.
+   Colour is stated outright: this table must never pick up the light palette. */
+table.wt{width:100%;height:100%;border-collapse:collapse;table-layout:fixed;color:#E8EFF4}
+table.wt td{color:#E8EFF4}
+table.wt .d{color:#FFFFFF}
+table.wt tbody{vertical-align:middle}
+table.wt th{font-family:Archivo,sans-serif;font-size:.64em;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--w-dim);text-align:left;padding:.65em .7em;border-bottom:1px solid var(--w-line);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+table.wt td{padding-left:.7em;padding-right:.7em}
+table.wt th.r,table.wt td.r{text-align:right}
+table.wt td{padding:.62em 1em;border-bottom:1px solid rgba(28,39,49,.6);font-size:1.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+table.wt tr:last-child td{border-bottom:0}
+table.wt .d{font-family:"IBM Plex Mono",monospace;font-weight:600}
+table.wt .s{color:#A9BAC6;font-size:.9em}
+table.wt .r{font-family:"IBM Plex Mono",monospace;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+table.wt .stat{width:.28em;padding:0}
+tr.w-out .stat{background:var(--w-out)} tr.w-h1 .stat{background:var(--w-crit)}
+tr.w-h3 .stat{background:var(--w-warn)} tr.w-h6 .stat{background:var(--w-ok)} tr.w-safe .stat{background:var(--w-calm)}
+table.wt tbody tr.fill{
+  background-image:linear-gradient(90deg,
+    var(--wfc) 0, var(--wfc) calc(var(--fp) - 1.2%), transparent var(--fp), transparent 100%);
+  background-repeat:no-repeat;
+}
+tr.w-out{--wfc:rgba(255,107,94,.20)} tr.w-h1{--wfc:rgba(255,159,69,.17)}
+tr.w-h3{--wfc:rgba(242,193,78,.15)} tr.w-h6{--wfc:rgba(78,217,160,.13)}
+tr.w-safe{--wfc:rgba(126,147,163,.11)}
+tr.w-out .d,tr.w-out .r{color:var(--w-out)} tr.w-h1 .d,tr.w-h1 .r{color:var(--w-crit)}
+tr.w-h3 .r{color:var(--w-warn)} tr.w-h6 .r{color:var(--w-ok)} tr.w-safe .r{color:var(--w-calm)}
+
+.wall-calm{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5em;color:var(--w-ok)}
+.wall-calm .big{font-family:Archivo,sans-serif;font-size:2.1em;font-weight:700;letter-spacing:.02em}
+.wall-calm .sm{color:var(--w-dim);font-size:.95em}
+
+.wbreak{flex:1;padding:.7em 1em;display:flex;flex-direction:column;justify-content:center;gap:.9em;overflow:hidden}
+.wbrow{display:grid;grid-template-columns:1fr auto;gap:.6em;align-items:center}
+.wbrow .n{font-size:.95em;color:#C3D2DC;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wbrow .c{font-family:"IBM Plex Mono",monospace;font-size:.95em;color:var(--w-dim)}
+.wbar{grid-column:1/-1;display:flex;height:.5em;border-radius:.25em;overflow:hidden;background:#0A1218}
+.wbar span{display:block}
+
+.whist{flex:1;display:grid;grid-template-columns:repeat(8,1fr);gap:.4em;align-items:end;padding:1em 1em .5em}
+.whcol{display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:.3em;text-align:center}
+.whcol .n{font-family:"IBM Plex Mono",monospace;font-size:.82em;color:#C3D2DC}
+.whcol .b{border-radius:.15em .15em 0 0;min-height:2px}
+.whlab{display:grid;grid-template-columns:repeat(8,1fr);gap:.4em;padding:0 1em .8em}
+.whlab div{font-family:"IBM Plex Mono",monospace;font-size:.68em;color:var(--w-dim);text-align:center}
+
+.wall-foot{display:flex;align-items:center;gap:1em;padding:.6em 1.4em;border-top:1px solid var(--w-line);
+  font-family:Archivo,sans-serif;font-size:.7em;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--w-dim)}
+.wall-foot .mid{margin-left:auto;margin-right:auto}
+.wall-foot .stale{color:var(--w-crit)}
+.wall-foot .vstale{color:var(--w-out)}
+.wall-exit{position:fixed;bottom:3.2em;right:1.4em;z-index:72;opacity:0;transition:opacity .2s;pointer-events:none}
+.wall-exit.show{opacity:1;pointer-events:auto}
+
+.msgbox{width:100%;min-height:230px;resize:vertical;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:4px;padding:9px 11px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;line-height:1.6;color:var(--text)}
+.msgbox:focus{border-color:var(--accent);outline:none}
+.wide{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:5px 7px;
+  font-family:"IBM Plex Mono",monospace;font-size:11.5px}
+.wide:focus{border-color:var(--accent);outline:none}
+.sendrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:11px}
+.result{font-size:11.5px;padding:8px 11px;border-radius:4px;margin-top:10px;display:none}
+.result.ok{display:block;background:var(--ok-bg);border:1px solid var(--ok-line);color:var(--ok)}
+.result.bad{display:block;background:var(--out-bg);border:1px solid var(--out-line);color:var(--out)}
+
+/* ---- alert toasts ---- */
+.toasts{position:fixed;right:16px;bottom:16px;z-index:60;display:flex;flex-direction:column;gap:8px;max-width:340px}
+.toast{background:var(--surface);border:1px solid var(--out-line);border-left:3px solid var(--out);border-radius:5px;
+  padding:10px 12px;box-shadow:var(--shadow)}
+.toast h4{font-family:Archivo,sans-serif;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--out);margin:0 0 4px}
+.toast .docs{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--text);line-height:1.6;word-break:break-all}
+.toast .row{display:flex;gap:7px;margin-top:8px}
+.toast.warnlvl{border-color:var(--crit-line);border-left-color:var(--crit)}
+.toast.warnlvl h4{color:var(--crit)}
+.toast.okmsg{border-color:var(--ok-line);border-left-color:var(--ok)}
+.toast.okmsg h4{color:var(--ok)}
+
+/* ---- drawers ---- */
+.scrim{position:fixed;inset:0;background:rgba(10,16,22,.5);z-index:50;opacity:0;pointer-events:none;transition:opacity .18s}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(780px,100%);z-index:51;background:var(--bg);
+  border-left:1px solid var(--line);display:flex;flex-direction:column;transform:translateX(100%);
+  transition:transform .22s ease;box-shadow:-14px 0 40px -18px rgba(0,0,0,.5)}
+.drawer.on{transform:none}
+.drawer-h{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--surface);flex-wrap:wrap}
+.drawer-h h2{font-size:14px;font-weight:700;margin-right:auto}
+.drawer-b{overflow:auto;padding:16px;flex:1}
+.drawer-f{display:flex;gap:8px;align-items:center;padding:11px 16px;border-top:1px solid var(--line);background:var(--surface)}
+
+.sect{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:13px 14px;margin-bottom:12px}
+.sect > h3{font-size:12px;font-weight:600;margin-bottom:3px}
+.sect > .desc{font-size:11.5px;color:var(--text-3);margin-bottom:11px;max-width:64ch}
+
+.rule{border:1px solid var(--line);border-radius:5px;margin-bottom:8px;background:var(--surface-2);overflow:hidden}
+.rule.off{opacity:.5}
+.rule-h{display:flex;align-items:center;gap:8px;padding:7px 9px;border-bottom:1px solid var(--line-soft)}
+.rule-h .ord{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--text-3);width:16px}
+.rule-h input.nm{flex:1;background:transparent;border:1px solid transparent;border-radius:3px;padding:3px 5px;font-size:12px;font-weight:600;min-width:60px}
+.rule-h input.nm:hover{border-color:var(--line)}
+.rule-h input.nm:focus{border-color:var(--accent);background:var(--surface)}
+.rule-b{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;padding:10px 9px}
+.f{display:flex;flex-direction:column;gap:3px}
+.f > span{font-family:Archivo,sans-serif;font-size:9px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3)}
+.f input,.f select{background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:4px 6px;font-size:12px;width:100%}
+.f input:focus,.f select:focus{border-color:var(--accent);outline:none}
+.f .fh{font-size:10.5px;color:var(--text-3);font-family:inherit;font-weight:400;letter-spacing:0;text-transform:none}
+.days{display:flex;gap:3px;flex-wrap:wrap}
+.days button{padding:3px 6px;border:1px solid var(--line);background:var(--surface);border-radius:3px;font-size:10px;font-family:"IBM Plex Mono",monospace;cursor:pointer;color:var(--text-3)}
+.days button.on{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:600}
+.iconbtn{border:1px solid var(--line);background:var(--surface);border-radius:3px;width:23px;height:23px;display:grid;place-items:center;cursor:pointer;color:var(--text-3);font-size:12px;line-height:1;flex:none}
+.iconbtn:hover{color:var(--text);border-color:var(--text-3)}
+.iconbtn.danger:hover{color:var(--out);border-color:var(--out-line)}
+.sw{position:relative;width:30px;height:17px;border-radius:9px;background:var(--line);border:0;cursor:pointer;flex:none;transition:background .14s}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:var(--surface);transition:transform .14s}
+.sw[aria-checked="true"]{background:var(--accent)}
+.sw[aria-checked="true"]::after{transform:translateX(13px)}
+
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px}
+.bands{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.bandprev{display:flex;flex-wrap:wrap;gap:5px;margin-top:11px}
+.codes{display:flex;flex-direction:column;gap:6px}
+.coderow{display:flex;align-items:center;gap:7px}
+.coderow input[type=text]{width:64px;background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:4px 6px;font-family:"IBM Plex Mono",monospace;font-size:12px}
+.coderow input[type=time]{background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:4px 6px;font-family:"IBM Plex Mono",monospace;font-size:12px}
+.tiny{font-size:11px;color:var(--text-3);margin-top:8px;line-height:1.5}
+.tiny code{font-family:"IBM Plex Mono",monospace;background:var(--surface-3);padding:1px 4px;border-radius:2px;font-size:10.5px}
+input[type=file]{display:none}
+.dropz{border:1.5px dashed var(--line);border-radius:6px;padding:16px;text-align:center;cursor:pointer;background:var(--surface-2);transition:border-color .14s,background .14s}
+.dropz:hover,.dropz.over{border-color:var(--accent);background:var(--accent-soft)}
+.dropz .t{font-size:12.5px;font-weight:600}
+.dropz .s{font-size:11px;color:var(--text-3);margin-top:2px}
+
+/* ---- out-of-TAT group at the foot of the working list ----
+   Breached work is a backlog, not a queue: it reports as one block and only
+   opens to document level when someone asks it to. ---- */
+tr.grouphead td{padding:0!important;background:var(--surface-2);border-bottom:1px solid var(--line)!important}
+.ghead{display:flex;align-items:center;gap:9px;padding:8px 10px;cursor:pointer;user-select:none}
+.ghead:hover{background:var(--surface-3)}
+.ghead .cv{width:12px;text-align:center;color:var(--out);font-size:8px;transition:transform .15s}
+.ghead.open .cv{transform:rotate(90deg)}
+.ghead .gt{font-family:Archivo,sans-serif;font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--out)}
+.ghead .gn{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600;color:var(--out)}
+.ghead .gw{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--out);white-space:nowrap}
+.ghead .gs{font-size:11px;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ghead .gx{font-size:10.5px;color:var(--accent);white-space:nowrap;text-decoration:underline;text-underline-offset:2px}
+
+/* ---- settings: tones, volume, status pickers ---- */
+.vol{display:flex;align-items:center;gap:9px}
+.vol .mk{font-family:Archivo,sans-serif;font-size:9px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3);margin-right:4px}
+.vol input[type=range]{flex:1;accent-color:var(--accent);height:18px;cursor:pointer}
+.vol .vv{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--text-2);width:42px;text-align:right;font-variant-numeric:tabular-nums}
+.toneRow{display:flex;align-items:flex-end;gap:8px;margin-bottom:10px}
+.toneRow .f{flex:1}
+.toneRow:last-child{margin-bottom:0}
+.stchk{display:flex;flex-wrap:wrap;gap:6px}
+.stchk button{padding:4px 9px;border:1px solid var(--line);background:var(--surface);border-radius:3px;
+  font-family:Archivo,sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  cursor:pointer;color:var(--text-3)}
+.stchk button:hover{color:var(--text)}
+.stchk button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--text)}
+
+/* ---- wallboard: the breached backlog as one band ---- */
+.wlisttbl{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.wout{display:flex;align-items:center;gap:1.1em;padding:.8em 1.1em;
+  background:linear-gradient(90deg,rgba(255,107,94,.18),rgba(255,107,94,.03));
+  border-bottom:1px solid rgba(255,107,94,.34);flex:none}
+.wout .n{font-family:"IBM Plex Mono",monospace;font-size:2.3em;font-weight:600;color:var(--w-out);
+  line-height:1;font-variant-numeric:tabular-nums}
+.wout .lb{font-family:Archivo,sans-serif;font-size:.72em;font-weight:700;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--w-out)}
+.wout .sub{font-size:.82em;color:#C6A9A5;margin-top:.22em}
+.wout .grp{margin-left:auto;display:flex;gap:1.5em;flex-wrap:wrap;justify-content:flex-end}
+.wout .grp .gk{font-family:Archivo,sans-serif;font-size:.66em;font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;color:#B29B98;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:11em;text-align:right}
+.wout .grp .gn{font-family:"IBM Plex Mono",monospace;font-size:1.15em;color:#FFC9C3;text-align:right}
+</style>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="brand"><h1>Picking TAT Control</h1><span class="sub">Outbound &middot; Warehouse</span></div>
+    <div class="clock"><span class="dot"></span><span class="t mono" id="clock">--:--:--</span><span class="z" id="clockDate"></span></div>
+    <button class="btn" id="btnAlarm" title="Sound an alert when a document goes out of TAT">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+      <span id="alarmLbl">Alert off</span></button>
+    <button class="btn" id="btnUpload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Upload</button>
+    <button class="btn" id="btnLogic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>TAT logic</button>
+    <button class="btn" id="btnWall" title="Full-screen board for a wall display"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>Display</button>
+    <button class="btn" id="btnTeams"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Teams</button>
+    <button class="btn" id="btnExport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v12m0 0 5-5m-5 5-5-5M4 19h16"/></svg>Export</button>
+    <button class="btn" id="btnSettings" title="Alert tone, volume and appearance"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M20.3 13.4a8 8 0 0 0 0-2.8l2-1.5-2-3.4-2.3 1a8 8 0 0 0-2.4-1.4L15.2 3H10.8l-.4 2.3a8 8 0 0 0-2.4 1.4l-2.3-1-2 3.4 2 1.5a8 8 0 0 0 0 2.8l-2 1.5 2 3.4 2.3-1a8 8 0 0 0 2.4 1.4l.4 2.3h4.4l.4-2.3a8 8 0 0 0 2.4-1.4l2.3 1 2-3.4z"/></svg>Settings</button>
+    <button class="btn ghost" id="btnTheme" title="Toggle light / dark">&#9681;</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="srcbar">
+    <div class="src" id="srcOrders"><span class="tag">Orders</span><span class="nm">&mdash;</span></div>
+    <div class="src" id="srcStores"><span class="tag">Store cut-offs</span><span class="nm">&mdash;</span></div>
+    <span class="hint spacer" id="calcHint"></span>
+    <button class="btn ghost" id="btnUpload2">Replace files</button>
+  </div>
+
+  <div class="signal" id="signal"></div>
+
+  <div class="grid2">
+    <div class="panel">
+      <div class="panel-h">
+        <h2>Document count by</h2>
+        <select id="mxDim" class="minisel">
+          <option value="scenario">Business scenario</option>
+          <option value="bu">BU</option>
+          <option value="grade">Store grade</option>
+          <option value="procType">Whse proc. type</option>
+          <option value="shipTo">Store</option>
+          <option value="wave">Wave</option>
+        </select>
+        <span class="note">click a number to filter</span>
+      </div>
+      <div class="mxwrap"><table class="mx" id="matrix"></table></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h"><h2>Time to out of TAT</h2><span class="note">documents still open</span></div>
+      <div class="hist" id="hist"></div>
+      <div class="hlabels" id="histLabels"></div>
+    </div>
+  </div>
+
+  <div class="filters">
+    <div class="fld"><label for="fSearch">Find</label><input id="fSearch" type="search" placeholder="Document, wave, store, site code&hellip;"></div>
+    <div class="fld"><label for="fScenario">Scenario</label><select id="fScenario"></select></div>
+    <div class="fld"><label for="fBu">BU</label><select id="fBu"></select></div>
+    <div class="fld"><label for="fGrade">Grade</label><select id="fGrade"></select></div>
+    <div class="fld"><label for="fProc">Proc</label><select id="fProc"></select></div>
+    <div class="fld"><label for="fStatus">Status</label><select id="fStatus"></select></div>
+    <div class="fld"><label for="fDone">Completed</label><select id="fDone"><option value="hide">Hidden</option><option value="show">Shown</option><option value="only">Only</option></select></div>
+    <button class="btn ghost" id="btnClear">Clear</button>
+    <span class="count" id="rowCount"></span>
+  </div>
+
+  <div class="tablewrap">
+    <table class="grid"><thead><tr id="thead"></tr></thead><tbody id="tbody"></tbody></table>
+  </div>
+
+  <div id="notices"></div>
+
+  <footer class="foot">
+    <span>Picking TAT Control</span>
+    <span class="sep">&middot;</span>
+    <span>Developed by <b>Dineth Chandrasiri</b></span>
+    <span class="sep">&middot;</span>
+    <span>8 September 2026</span>
+  </footer>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<!-- ============ WALLBOARD ============ -->
+<div class="wall" id="wall">
+  <div class="wall-amb"></div>
+  <div class="wall-top">
+    <div class="wall-brand">PICKING TAT<span>Outbound &middot; Warehouse</span></div>
+    <div class="wall-live"><i></i>LIVE</div>
+    <div class="wall-next" id="wNext"><span class="k">NEXT OUT OF TAT</span><span class="v" id="wNextV">--:--</span></div>
+    <div class="wall-clock"><b id="wClock">--:--:--</b><span id="wDate"></span></div>
+  </div>
+  <div class="wall-tiles" id="wTiles"></div>
+  <div class="wall-main">
+    <section class="wall-panel">
+      <header><h2>Open documents &middot; most urgent first</h2><span class="pg" id="wPage"></span></header>
+      <div id="wListHost" style="flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden"></div>
+    </section>
+    <div class="wall-side">
+      <section class="wall-panel">
+        <header><h3>Workload</h3></header>
+        <div class="wring" id="wRing"></div>
+        <div class="wtrend" id="wTrend"></div>
+      </section>
+      <section class="wall-panel">
+        <header><h3 id="wBreakTitle">By scenario</h3></header>
+        <div class="wbreak" id="wBreak"></div>
+      </section>
+      <section class="wall-panel">
+        <header><h3>Time to out of TAT</h3></header>
+        <div class="whist" id="wHist"></div>
+        <div class="whlab" id="wHistLab"></div>
+      </section>
+    </div>
+  </div>
+  <div class="wticker" id="wTicker">
+    <div class="tag"><i></i>OUT OF TAT</div>
+    <div class="wtrack"><div class="run" id="wTickerRun"></div></div>
+  </div>
+  <div class="wall-foot">
+    <span id="wData">&mdash;</span>
+    <span class="mid">Developed by Dineth Chandrasiri &middot; 8 September 2026</span>
+    <span id="wUpdated">&mdash;</span>
+  </div>
+</div>
+<button class="btn wall-exit" id="btnWallExit">Exit display</button>
+
+<!-- ============ UPLOAD ============ -->
+<div class="scrim" id="scrimU"></div>
+<div class="drawer" id="drawerU" role="dialog" aria-label="Upload data">
+  <div class="drawer-h"><h2>Upload data</h2><button class="btn ghost" data-close="U">Close</button></div>
+  <div class="drawer-b">
+    <div class="sect">
+      <h3>1 &middot; Picking / OBD extract <span style="color:var(--out);font-weight:400">required</span></h3>
+      <p class="desc">One row per delivery. Needs <b>Created On / At</b>, <b>Release Date / Time</b>, <b>Whse Proc. Type</b>, <b>Document</b>, <b>Business Scenario</b>, <b>Store Grade</b> and <b>Ship-To</b>. Columns are matched by header name, so extra columns and a different order are fine.</p>
+      <div class="dropz" id="dzOrders"><div class="t">Drop the picking file here, or click to browse</div><div class="s">.xlsx, .xls or .csv &mdash; read in your browser, nothing is uploaded anywhere</div></div>
+      <input type="file" id="fileOrders" accept=".xlsx,.xls,.csv">
+      <div class="tiny" id="ordersInfo"></div>
+    </div>
+    <div class="sect">
+      <h3>2 &middot; Store cut-off master <span style="color:var(--text-3);font-weight:400">recommended</span></h3>
+      <p class="desc">The site master with <b>Site Code</b>, <b>Store Grade</b>, <b>Order Cut-Offs</b> and the weekday columns (<b>Sat &hellip; Fri</b>) carrying codes such as <code>C1</code> / <code>C3</code>.</p>
+      <div class="dropz" id="dzStores"><div class="t">Drop the store master here, or click to browse</div><div class="s">.xlsx, .xls or .csv</div></div>
+      <input type="file" id="fileStores" accept=".xlsx,.xls,.csv">
+      <div class="tiny" id="storesInfo"></div>
+    </div>
+    <div class="sect">
+      <h3>Reading dates</h3>
+      <div class="kv">
+        <label class="f"><span>Text date format</span><select id="optDateFmt"><option value="DMY">DD/MM/YYYY</option><option value="MDY">MM/DD/YYYY</option><option value="YMD">YYYY-MM-DD</option></select><span class="fh">Used only when a cell holds text, not a real date.</span></label>
+        <label class="f"><span>Clock starts from</span><select id="optRefSrc">
+          <option value="releaseElseCreated">Release date/time, else Created</option>
+          <option value="release">Release date/time only</option>
+          <option value="created">Created on/at only</option>
+        </select><span class="fh">The stamp compared against the cut-off.</span></label>
+      </div>
+    </div>
+  </div>
+  <div class="drawer-f"><button class="btn primary" data-close="U">Done</button><span class="hint">Files stay on this machine. Documents you have marked complete are kept.</span></div>
+</div>
+
+<!-- ============ TEAMS ============ -->
+<div class="scrim" id="scrimT"></div>
+<div class="drawer" id="drawerT" role="dialog" aria-label="Send to Teams">
+  <div class="drawer-h"><h2>Send to Teams</h2><button class="btn ghost" id="btnRefreshMsg">Rebuild message</button><button class="btn ghost" data-close="T">Close</button></div>
+  <div class="drawer-b">
+    <div class="sect">
+      <h3>Message</h3>
+      <p class="desc">Built from what is on the board right now. Edit it freely before sending &mdash; nothing is sent until you press the button.</p>
+      <textarea class="msgbox" id="teamsMsg"></textarea>
+    </div>
+    <div class="sect">
+      <h3>Where it goes</h3>
+      <p class="desc">In Teams, hover the channel name &rsaquo; <b>&hellip;</b> &rsaquo; <b>Workflows</b> &rsaquo; pick <i>Post to a channel when a webhook request is received</i> &rsaquo; choose the team and channel &rsaquo; <b>Add workflow</b>. Teams shows an HTTPS URL once &mdash; copy it and paste it below. If your tenant still offers <b>Connectors</b> &rsaquo; <i>Incoming Webhook</i>, that URL works too: pick the MessageCard format for it.</p>
+      <p class="desc"><b>No webhook, or it will not send?</b> <b>Copy message</b> always works &mdash; paste it straight into the channel.</p>
+      <label class="f"><span>Webhook URL</span><input type="url" class="wide" id="teamsHook" placeholder="https://prod-00.westeurope.logic.azure.com/workflows/..."></label>
+      <label class="f" style="margin-top:9px;max-width:260px"><span>Payload format</span>
+        <select id="teamsFmt">
+          <option value="card">Adaptive Card (Workflows)</option>
+          <option value="legacy">MessageCard (classic connector)</option>
+          <option value="plain">Plain text</option>
+        </select></label>
+      <div class="sendrow">
+        <button class="btn primary" id="btnSendTeams">Send to Teams</button>
+        <button class="btn" id="btnCopyMsg">Copy message</button>
+        <span class="hint">The webhook URL is kept on this browser only.</span>
+      </div>
+      <div class="result" id="teamsResult"></div>
+      <div class="tiny">A browser cannot read a Teams webhook's reply, so a send is reported as <i>dispatched</i> rather than confirmed &mdash; check the channel. Posting to a webhook only works when this dashboard is opened from the <code>.html</code> file on your machine; in the hosted view the browser blocks it, so use <b>Copy message</b> there.</div>
+    </div>
+  </div>
+  <div class="drawer-f"><button class="btn ghost" data-close="T">Close</button><span class="hint">Nothing leaves this page until you press Send.</span></div>
+</div>
+
+<!-- ============ LOGIC ============ -->
+<div class="scrim" id="scrimL"></div>
+<div class="drawer" id="drawerL" role="dialog" aria-label="TAT logic">
+  <div class="drawer-h">
+    <h2>TAT logic</h2>
+    <button class="btn ghost" id="btnRulesExport">Export JSON</button>
+    <button class="btn ghost" id="btnRulesImport">Import</button>
+    <input type="file" id="fileRules" accept=".json">
+    <button class="btn ghost" id="btnRulesReset">Reset</button>
+    <button class="btn ghost" data-close="L">Close</button>
+  </div>
+  <div class="drawer-b">
+
+    <div class="sect">
+      <h3>Status bands</h3>
+      <p class="desc">Where the remaining time before the expected packing stamp turns from one status into the next.</p>
+      <label class="f" style="max-width:220px;margin-bottom:11px"><span>Measure remaining time in</span>
+        <select id="optBandMode"><option value="hrs">Hours</option><option value="pct">% of the TAT</option></select></label>
+      <div class="bands">
+        <label class="f"><span id="lb1">Out of TAT within</span><input type="number" id="optE1" min="0" step="0.5"></label>
+        <label class="f"><span id="lb2">Then within</span><input type="number" id="optE2" min="0" step="0.5"></label>
+        <label class="f"><span id="lb3">Then within</span><input type="number" id="optE3" min="0" step="0.5"></label>
+      </div>
+      <div class="bandprev" id="bandPreview"></div>
+      <div style="display:flex;align-items:center;gap:.65em;margin-top:13px;padding-top:12px;border-top:1px solid var(--line-soft)">
+        <button class="sw" id="optGroupOut" aria-checked="true" title="Collect out-of-TAT documents into one block at the foot of the list"></button>
+        <div>
+          <div style="font-size:12px;font-weight:600">Out of TAT as one block at the foot</div>
+          <div class="fh">Sorted by remaining time the list leads with whatever breaches next and sends anything already breached to the bottom, collected under one summary line. Click that line to open it to document level.</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:.65em;margin-top:11px">
+        <button class="sw" id="optRowFill" aria-checked="true" title="Fill each row in proportion to the TAT already used"></button>
+        <div>
+          <div style="font-size:12px;font-weight:600">Fill each row by time used</div>
+          <div class="fh">The row fills left to right as its TAT is spent, so how far through an OBD is reads without checking the numbers. Solid at out of TAT.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sect">
+      <h3>Display board</h3>
+      <p class="desc">Settings for the full-screen wall view. Scope lets two screens show two different parts of the floor from the same file.</p>
+      <div class="kv">
+        <label class="f"><span>Rows per page</span><input type="number" id="wOptRows" min="3" max="20" step="1"></label>
+        <label class="f"><span>Seconds per page</span><input type="number" id="wOptSec" min="3" max="120" step="1"></label>
+        <label class="f"><span>Ticker speed</span><select id="wOptTickSpd">
+          <option value="35">Very slow</option>
+          <option value="55">Slow</option>
+          <option value="85">Steady</option>
+          <option value="130">Brisk</option>
+        </select><span class="fh">Pixels a second, held constant however long the list gets.</span></label>
+        <label class="f"><span>Only these BUs</span><input type="text" id="wOptBu" placeholder="all"><span class="fh">Comma separated.</span></label>
+        <label class="f"><span>Only these scenarios</span><input type="text" id="wOptSc" placeholder="all"><span class="fh">Comma separated.</span></label>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:9px;margin-top:12px">
+        <div style="display:flex;align-items:center;gap:9px">
+          <button class="sw" id="wOptRotate" aria-checked="true"></button>
+          <div><div style="font-size:12px;font-weight:600">Rotate the breakdown</div>
+          <div class="fh">Cycles scenario &rarr; BU &rarr; grade &rarr; store as the list pages.</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px">
+          <button class="sw" id="wOptGroupOut" aria-checked="true"></button>
+          <div><div style="font-size:12px;font-weight:600">Out of TAT as one summary</div>
+          <div class="fh">Breached documents leave the paged list and are reported as a count, the worst breach and the BUs behind it &mdash; a wall cannot act on a document number. The ticker still names them.</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px">
+          <button class="sw" id="wOptTicker" aria-checked="true"></button>
+          <div><div style="font-size:12px;font-weight:600">Out-of-TAT ticker</div>
+          <div class="fh">Scrolling strip along the bottom, only when something is breached.</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px">
+          <button class="sw" id="wOptAmb" aria-checked="true"></button>
+          <div><div style="font-size:12px;font-weight:600">Ambient glow</div>
+          <div class="fh">The background takes its hue from the worst live status.</div></div>
+        </div>
+      </div>
+      <div style="margin-top:13px;padding-top:12px;border-top:1px solid var(--line-soft)">
+        <div style="font-size:12px;font-weight:600;margin-bottom:2px">Statuses on the board</div>
+        <div class="fh" style="margin-bottom:7px">Leave a status off and it disappears from the whole board &mdash; tiles, ring, list, breakdown and histogram. At least one stays on.</div>
+        <div class="stchk" id="wOptStatuses"></div>
+      </div>
+      <div class="tiny">The list leads with whatever breaches next; anything already out of TAT drops to the foot. The header also carries a live countdown to the next document due, and the workload panel keeps a rolling trend for as long as the board stays open.</div>
+    </div>
+
+    <div class="sect">
+      <h3>Rules</h3>
+      <p class="desc">Read top to bottom &mdash; the <b>first</b> rule a document matches sets both its TAT and where its clock starts. An empty match box means &ldquo;any&rdquo;. Use commas for several values.</p>
+      <div id="rules"></div>
+      <button class="btn" id="btnAddRule">+ Add rule</button>
+    </div>
+
+    <div class="sect">
+      <h3>Cut-off codes</h3>
+      <p class="desc">How the weekday codes in the store master translate into a time of day.</p>
+      <div class="codes" id="codes"></div>
+      <button class="btn" id="btnAddCode" style="margin-top:9px">+ Add code</button>
+      <div class="tiny">A weekday cell may hold more than one code (<code>C1,C3</code>) &mdash; the earliest one the document still makes is used. A cell holding a plain time such as <code>09:00</code> works too. Blank means the store takes no cut-off that day, so the clock rolls to the next day that does.</div>
+    </div>
+
+    <div class="sect">
+      <h3>Completion</h3>
+      <div class="kv">
+        <label class="f"><span>A document counts as complete when</span><select id="optDoneRule">
+          <option value="manual">It is marked complete on this board</option>
+          <option value="manualOrStatus">Marked here, or its picking status matches</option>
+          <option value="status">Its picking status matches</option>
+        </select></label>
+        <label class="f"><span>Picking statuses that mean complete</span><input type="text" id="optDoneStatus" placeholder="Completed"><span class="fh">Comma separated.</span></label>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn" id="btnClearDone">Clear documents marked complete</button>
+        <span class="hint" id="doneCount"></span>
+      </div>
+      <div class="tiny">Marks are kept in this browser against the document number, so they survive a refresh and a re-upload of the same documents.</div>
+    </div>
+
+  </div>
+  <div class="drawer-f"><button class="btn primary" data-close="L">Apply &amp; close</button><span class="hint">Saved on this browser.</span></div>
+</div>
+
+<!-- ============ SETTINGS ============ -->
+<div class="scrim" id="scrimS"></div>
+<div class="drawer" id="drawerS" role="dialog" aria-label="Settings">
+  <div class="drawer-h"><h2>Settings</h2><button class="btn ghost" data-close="S">Close</button></div>
+  <div class="drawer-b">
+
+    <div class="sect">
+      <h3>Out-of-TAT alert</h3>
+      <p class="desc">A tone when a document that has not been marked complete crosses into out of TAT. It only sounds while this board is open, and a browser needs one click on the page before it allows any sound at all &mdash; switching the alert on counts as that click.</p>
+      <div style="display:flex;align-items:center;gap:.65em;margin-bottom:12px">
+        <button class="sw" id="setAlarmOn" aria-checked="false"></button>
+        <div>
+          <div style="font-size:12px;font-weight:600">Alert on</div>
+          <div class="fh">The same switch as the bell in the header.</div>
+        </div>
+      </div>
+      <div class="kv">
+        <label class="f"><span>Sound the tone</span><select id="optAlarmWhen">
+          <option value="out">When a document goes out of TAT</option>
+          <option value="both">Out of TAT, and at the first warning band</option>
+        </select></label>
+        <label class="f"><span>Repeat every</span><select id="optAlarmRepeat">
+          <option value="0">Once per document</option>
+          <option value="300000">5 minutes while still out of TAT</option>
+          <option value="900000">15 minutes while still out of TAT</option>
+        </select></label>
+      </div>
+    </div>
+
+    <div class="sect">
+      <h3>Tone</h3>
+      <p class="desc">A warehouse floor is loud, and a tone people learn to ignore is worse than none. Pick one for each level and listen to it here before you rely on it &mdash; a breach plays its tone twice, a warning once.</p>
+      <div class="toneRow">
+        <label class="f"><span>Out of TAT</span><select id="optToneOut"></select></label>
+        <button class="btn" id="btnTestOut">Play</button>
+      </div>
+      <div class="toneRow">
+        <label class="f"><span>Warning band</span><select id="optToneWarn"></select></label>
+        <button class="btn" id="btnTestWarn">Play</button>
+      </div>
+      <div class="tiny">The warning tone is only used when the alert above is set to sound at the first warning band as well.</div>
+    </div>
+
+    <div class="sect">
+      <h3>Volume</h3>
+      <p class="desc">Sets the level for every tone this board plays. The machine's own volume still applies on top of it.</p>
+      <div class="vol">
+        <button class="sw" id="optMute" aria-checked="false" title="Mute every tone"></button>
+        <span class="mk">Mute</span>
+        <input type="range" id="optVol" min="0" max="100" step="1" aria-label="Alert volume">
+        <span class="vv" id="volVal">70%</span>
+      </div>
+      <div class="tiny">Muting leaves the alert switched on, so the toasts and the board still react to a breach &mdash; only the sound stops.</div>
+    </div>
+
+    <div class="sect">
+      <h3>Appearance</h3>
+      <div class="kv">
+        <label class="f"><span>Theme</span><select id="optTheme">
+          <option value="">Follow the machine</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select><span class="fh">The display board is always dark.</span></label>
+      </div>
+    </div>
+
+  </div>
+  <div class="drawer-f"><button class="btn primary" data-close="S">Done</button><span class="hint">Saved on this browser.</span></div>
+</div>
+
+<script>
+"use strict";
+/* ======================================================================
+   Picking TAT Control — all parsing and calculation happens in this page.
+   ====================================================================== */
+
+const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];        // index = JS getDay()
+const DAY_ORDER = ["Sat","Sun","Mon","Tue","Wed","Thu","Fri"];   // Sat-first week, for the UI
+const ALL_DAYS = () => DAYS.slice();
+function rid(){ return "r"+Math.random().toString(36).slice(2,9); }
+
+/* ---------------------- default logic ---------------------- */
+function defaultConfig(){
+  return {
+    version: 5,
+    dateFmt:"DMY", refSrc:"releaseElseCreated",
+    bandMode:"hrs", bands:{e1:1, e2:3, e3:6}, rowFill:true,
+    alarmWhen:"out", alarmRepeat:0,
+    sound:{out:"chime", warn:"ping", vol:0.7, mute:false},
+    // Out of TAT is a backlog: it sits at the foot of the list as one block,
+    // opened to document level only when someone asks.
+    groupOut:true, groupOutOpen:false,
+    // A picking extract that already reports a document as picked is the truth of
+    // record — a board that ignored it kept showing work the floor had finished.
+    doneRule:"manualOrStatus", doneStatuses:"Completed",
+    wall:{rows:9, pageSec:9, rotateDim:true, ticker:true, tickerSpeed:55, ambient:true, bu:"", scenario:"",
+          groupOut:true, statuses:["out","h1","h3","h6","safe","done"]},
+    // Placeholder policy. These are illustrative numbers, not any operation's real
+    // TAT commitments — load your own under TAT logic › Import, which replaces every
+    // rule, band and code in one step and keeps them in this browser afterwards.
+    codes:[ {code:"M1", time:"10:00"}, {code:"M2", time:"18:00"} ],
+    rules:[
+      { id:rid(), on:true, name:"Express pick (proc. type 1001)",
+        m:{procType:"1001", scenario:"", grade:"", bu:""},
+        tat:4, start:"immediate", times:"", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
+      { id:rid(), on:true, name:"Long lead (proc. type 1009)",
+        m:{procType:"1009", scenario:"", grade:"", bu:""},
+        tat:72, start:"immediate", times:"", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
+      { id:rid(), on:true, name:"Wholesale",
+        m:{procType:"", scenario:"WHOLESALE", grade:"", bu:""},
+        tat:48, start:"cutoff", times:"09:00", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
+      { id:rid(), on:true, name:"Retail export",
+        m:{procType:"", scenario:"RETAIL-EXP", grade:"", bu:""},
+        tat:36, start:"cutoff", times:"12:00", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
+      { id:rid(), on:true, name:"Retail domestic — A grade",
+        m:{procType:"", scenario:"RETAIL-DOM", grade:"A", bu:""},
+        tat:8,  start:"immediate", times:"", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
+      { id:rid(), on:true, name:"Retail domestic — B grade",
+        m:{procType:"", scenario:"RETAIL-DOM", grade:"B", bu:""},
+        tat:24, start:"immediate", times:"", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
+      { id:rid(), on:true, name:"Retail domestic — C grade (store calendar)",
+        m:{procType:"", scenario:"RETAIL-DOM", grade:"C", bu:""},
+        tat:24, start:"store", times:"10:00", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
+      { id:rid(), on:true, name:"Retail domestic — D grade",
+        m:{procType:"", scenario:"RETAIL-DOM", grade:"D", bu:""},
+        tat:36, start:"immediate", times:"", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
+      { id:rid(), on:true, name:"Everything else",
+        m:{procType:"", scenario:"", grade:"", bu:""},
+        tat:24, start:"immediate", times:"", days:ALL_DAYS(), grace:30, storeSrc:"codes" }
+    ]
+  };
+}
+let CFG = loadCfg();
+function loadCfg(){
+  try{
+    const s = localStorage.getItem("pickTat.cfg.v4");
+    if(s){ const p = JSON.parse(s); if(p && p.rules && p.rules.length) return migrate(Object.assign(defaultConfig(), p)); }
+  }catch(e){}
+  return defaultConfig();
+}
+// Settings saved by an earlier build come back missing whole blocks, and one of
+// their defaults was wrong: completion counted hand marks only, so a re-uploaded
+// extract could not close anything. Fill the gaps and correct that one default.
+function migrate(c){
+  const d = defaultConfig();
+  c.sound = Object.assign(d.sound, c.sound || {});
+  c.wall  = Object.assign(d.wall,  c.wall  || {});
+  if(!Array.isArray(c.wall.statuses) || !c.wall.statuses.length) c.wall.statuses = d.wall.statuses.slice();
+  if(typeof c.groupOut !== "boolean") c.groupOut = d.groupOut;
+  if(typeof c.groupOutOpen !== "boolean") c.groupOutOpen = d.groupOutOpen;
+  if(!(Number(c.version) >= 5)){
+    if(c.doneRule === "manual") c.doneRule = "manualOrStatus";
+    c.version = 5;
+  }
+  return c;
+}
+function saveCfg(){ try{ localStorage.setItem("pickTat.cfg.v4", JSON.stringify(CFG)); }catch(e){} }
+
+/* documents marked complete by hand: docNo -> ISO stamp */
+let DONE = loadDone();
+function loadDone(){
+  try{ const s = localStorage.getItem("pickTat.done.v1"); if(s) return new Map(Object.entries(JSON.parse(s))); }catch(e){}
+  return new Map();
+}
+function saveDone(){
+  try{ localStorage.setItem("pickTat.done.v1", JSON.stringify(Object.fromEntries(DONE))); }catch(e){}
+}
+
+/* alert state */
+let ALARM_ON = false;
+try{ ALARM_ON = localStorage.getItem("pickTat.alarm")==="1"; }catch(e){}
+const ALARMED = new Map();   // docNo -> {level, at}
+
+/* ---------------------- header matching ---------------------- */
+const norm = s => String(s==null?"":s).toLowerCase().replace(/[^a-z0-9]/g,"");
+const ORDER_COLS = {
+  createdOn:["createdon","createddate","creationdate"],
+  createdAt:["createdat","createdtime","creationtime"],
+  releaseDate:["releasedate","reldate","releasedon"],
+  releaseTime:["releasetime","reltime"],
+  procType:["whseproctype","whseprocesstype","warehouseprocesstype","processtype","proctype"],
+  doc:["document","documentno","obd","obdno","deliverydocument","deliveryno","outbounddelivery"],
+  wave:["wave","waveno"],
+  bu:["bu","businessunit"],
+  status:["pickingstatusplan","pickingstatus","status"],
+  shipTo:["shipto","shiptoparty","sitecode","site","storecode"],
+  shipToName:["shiptopartydescription","shiptodescription","storename","shiptoname"],
+  scenario:["businessscenario","scenario","busscenario"],
+  grade:["storegrade","grade"]
+};
+const STORE_COLS = {
+  site:["sitecode","site","shipto","storecode","store","code","plant"],
+  grade:["storegrade","grade"],
+  cutoff:["ordercutoffs","ordercutoff","cutoff","cutofftime","ordercutofftime"],
+  name:["storename","description","shiptopartydescription","sitename"],
+  bu:["bu","businessunit"]
+};
+function mapHeaders(headerRow, dict){
+  const out = {};
+  headerRow.forEach((h,i)=>{
+    const n = norm(h); if(!n) return;
+    for(const key in dict){ if(out[key]!==undefined) continue;
+      if(dict[key].includes(n)){ out[key]=i; return; } }
+  });
+  headerRow.forEach((h,i)=>{
+    const n = norm(h); if(!n) return;
+    for(const key in dict){ if(out[key]!==undefined) continue;
+      if(dict[key].some(a=> n.startsWith(a) || (a.startsWith(n) && n.length>4))){ out[key]=i; return; } }
+  });
+  return out;
+}
+// A master can carry more than one block of weekday columns — e.g. SAT..FRI holding
+// Y/blank order days, and Sat..Fri holding the C1/C3 cut-off codes. Collect every
+// column for each day; the row reader sorts codes from plain yes/no markers.
+function mapDayCols(headerRow){
+  const full={sunday:"Sun",monday:"Mon",tuesday:"Tue",wednesday:"Wed",thursday:"Thu",friday:"Fri",saturday:"Sat"};
+  const out={};
+  headerRow.forEach((h,i)=>{
+    const n = norm(h); if(!n) return;
+    const day = full[n] || DAYS.find(d=>d.toLowerCase()===n);
+    if(day){ (out[day] = out[day] || []).push(i); }
+  });
+  return out;
+}
+// "Y", "yes", "x" and friends mark that the store takes an order that day; they are
+// not cut-off codes and must not be read as one.
+const DAY_MARKERS = new Set(["y","yes","n","no","x","true","false","1","0","na"]);
+const isDayMarker = s => DAY_MARKERS.has(norm(s));
+
+/* ---------------------- date / time ---------------------- */
+const EXCEL_EPOCH = Date.UTC(1899,11,30);
+function serialToYMD(n){
+  const d = new Date(EXCEL_EPOCH + Math.floor(n)*86400000);
+  return [d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()];
+}
+function parseDatePart(v, fmt){
+  if(v==null || v==="") return null;
+  if(v instanceof Date && !isNaN(v)) return [v.getFullYear(), v.getMonth(), v.getDate()];
+  if(typeof v === "number"){ if(v < 1) return null; return serialToYMD(v); }
+  const s = String(v).trim();
+  if(!s || /^0+$/.test(s)) return null;
+  if(/^\d+(\.\d+)?$/.test(s)){ const n=parseFloat(s); if(n<1) return null; return serialToYMD(n); }
+  const m = s.match(/^(\d{1,4})[\/\-.](\d{1,2})[\/\-.](\d{1,4})/);
+  if(!m){ const d=new Date(s); return isNaN(d)?null:[d.getFullYear(),d.getMonth(),d.getDate()]; }
+  let a=+m[1], b=+m[2], c=+m[3], y, mo, da;
+  if(m[1].length===4 || a>31){ y=a; mo=b; da=c; }
+  else if(fmt==="MDY"){ mo=a; da=b; y=c; }
+  else { da=a; mo=b; y=c; }
+  if(y<100) y += y<70 ? 2000 : 1900;
+  if(mo<1||mo>12||da<1||da>31) return null;
+  return [y, mo-1, da];
+}
+function parseTimePart(v){
+  if(v==null || v==="") return null;
+  if(v instanceof Date && !isNaN(v)) return v.getHours()*3600 + v.getMinutes()*60 + v.getSeconds();
+  if(typeof v === "number"){ return Math.round((v-Math.floor(v))*86400); }
+  const s = String(v).trim(); if(!s) return null;
+  if(/^\d*\.\d+$/.test(s)){ const f=parseFloat(s); return Math.round((f-Math.floor(f))*86400); }
+  const m = s.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i);
+  if(!m) return null;
+  let h=+m[1]; const mi=+m[2], se=m[3]?+m[3]:0, ap=(m[4]||"").toLowerCase();
+  if(ap==="pm" && h<12) h+=12;
+  if(ap==="am" && h===12) h=0;
+  return h*3600+mi*60+se;
+}
+function combine(datePart, secs){
+  if(!datePart) return null;
+  return new Date(datePart[0], datePart[1], datePart[2], 0,0,0,0).getTime() + (secs==null?0:secs)*1000;
+}
+function hhmmToSecs(t){
+  const m = String(t||"").trim().match(/^(\d{1,2})[:.]?(\d{2})?/);
+  if(!m) return null;
+  const h=+m[1], mi=m[2]?+m[2]:0;
+  if(h>23||mi>59) return null;
+  return h*3600+mi*60;
+}
+function dayStartOf(ms){ const d=new Date(ms); return new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime(); }
+function addDays(ms,n){ const d=new Date(ms); return new Date(d.getFullYear(),d.getMonth(),d.getDate()+n).getTime(); }
+const pad = n => String(n).padStart(2,"0");
+function fmtDT(ms){ if(ms==null) return "—"; const d=new Date(ms);
+  return pad(d.getDate())+"/"+pad(d.getMonth()+1)+" "+pad(d.getHours())+":"+pad(d.getMinutes()); }
+function fmtDTFull(ms){ if(ms==null) return "—"; const d=new Date(ms);
+  return DAYS[d.getDay()]+" "+pad(d.getDate())+"/"+pad(d.getMonth()+1)+"/"+d.getFullYear()+" "+pad(d.getHours())+":"+pad(d.getMinutes()); }
+function fmtDur(ms){
+  if(ms==null) return "—";
+  const neg = ms<0, a = Math.abs(ms);
+  return (neg?"−":"")+Math.floor(a/3600000)+"h "+pad(Math.floor(a%3600000/60000))+"m";
+}
+function secLabel(s){ return pad(Math.floor(s/3600))+":"+pad(Math.floor(s%3600/60)); }
+
+/* ---------------------- statuses ---------------------- */
+function bandLabels(){
+  const b = CFG.bands, u = CFG.bandMode==="pct" ? "%" : "h";
+  const n = x => (Math.round(x*10)/10);
+  return {
+    out:  "Out of TAT",
+    h1:   "Within "+n(b.e1)+u,
+    h3:   "Within "+n(b.e2)+u,
+    h6:   "Within "+n(b.e3)+u,
+    safe: "Over "+n(b.e3)+u,
+    done: "Completed"
+  };
+}
+function statusList(){
+  const L = bandLabels();
+  return [
+    {k:"out",  label:L.out,  cls:"s-out",  note:"past the expected packing time"},
+    {k:"h1",   label:L.h1,   cls:"s-h1",   note:"act now"},
+    {k:"h3",   label:L.h3,   cls:"s-h3",   note:"needs a plan"},
+    {k:"h6",   label:L.h6,   cls:"s-h6",   note:"in the queue"},
+    {k:"safe", label:L.safe, cls:"s-safe", note:"comfortable"},
+    {k:"done", label:L.done, cls:"s-done", note:"picked and closed"}
+  ];
+}
+function bucketOf(rem, tat){
+  if(rem == null) return "safe";
+  if(rem < 0) return "out";
+  const b = CFG.bands;
+  const v = CFG.bandMode==="pct" ? (tat>0 ? (rem/3600000)/tat*100 : 100) : rem/3600000;
+  if(v <= Number(b.e1)) return "h1";
+  if(v <= Number(b.e2)) return "h3";
+  if(v <= Number(b.e3)) return "h6";
+  return "safe";
+}
+
+/* ---------------------- rule engine ---------------------- */
+function splitList(s){ return String(s||"").split(",").map(x=>x.trim()).filter(Boolean); }
+function matchOne(val, spec){
+  const list = splitList(spec);
+  if(!list.length) return true;
+  const v = norm(val);
+  return list.some(x => norm(x) === v);
+}
+function pickRule(o){
+  for(const rl of CFG.rules){
+    if(!rl.on) continue;
+    if(!matchOne(o.procType, rl.m.procType)) continue;
+    if(!matchOne(o.scenario, rl.m.scenario)) continue;
+    if(!matchOne(o.grade,    rl.m.grade))    continue;
+    if(!matchOne(o.bu,       rl.m.bu))       continue;
+    return rl;
+  }
+  return null;
+}
+function codeMap(){
+  const m = {};
+  (CFG.codes||[]).forEach(c=>{ const s = hhmmToSecs(c.time); if(c.code && s!=null) m[norm(c.code)] = s; });
+  return m;
+}
+// cut-off times available on one weekday, in seconds since midnight, ascending
+function timesFor(rl, store, weekday, cm){
+  if(rl.start === "store" && store){
+    const src = rl.storeSrc || "codes";
+    const hasAnyDay = store.days && Object.keys(store.days).length > 0;
+    const cell = hasAnyDay ? store.days[weekday] : null;
+    // A day the store is not open for orders takes no cut-off at all.
+    if(hasAnyDay && !cell) return [];
+    // A master with no weekday columns at all falls back to the rule's own days.
+    if(!hasAnyDay && !(rl.days||[]).includes(weekday)) return [];
+    const out = [];
+    if(cell && (src === "codes" || src === "both")){
+      cell.codes.forEach(part=>{
+        const byCode = cm[norm(part)];
+        if(byCode != null){ out.push(byCode); return; }
+        if(/[:.]/.test(part)){ const t = hhmmToSecs(part); if(t != null) out.push(t); }
+      });
+    }
+    // The store's own Order Cut-Offs time covers a day that is open but carries no
+    // code we recognise — a blank cut-off cell, or a code not in the code table.
+    if(src === "column" || src === "both" || !out.length){
+      const t = hhmmToSecs(store.cutoff);
+      if(t != null) out.push(t);
+    }
+    if(!out.length){
+      splitList(rl.times).map(hhmmToSecs).filter(t=>t!=null).forEach(t=>out.push(t));
+    }
+    return [...new Set(out)].sort((a,b)=>a-b);
+  }
+  if(!(rl.days||[]).includes(weekday)) return [];
+  return [...new Set(splitList(rl.times).map(hhmmToSecs).filter(t=>t!=null))].sort((a,b)=>a-b);
+}
+function resolveStart(ref, rl, store, cm){
+  if(rl.start === "immediate") return { at:ref, note:"clock starts at the order stamp" };
+  const grace = (Number(rl.grace)||0)*60000;
+  const base = dayStartOf(ref);
+  const usedFallback = rl.start === "store" && !store;
+  const eff = usedFallback ? Object.assign({}, rl, {start:"cutoff"}) : rl;
+  for(let i=0;i<=14;i++){
+    const d = addDays(base,i);
+    const wd = DAYS[new Date(d).getDay()];
+    for(const t of timesFor(eff, store, wd, cm)){
+      const c = d + t*1000;
+      if(ref <= c + grace)
+        return { at:c, note:(usedFallback?"rule fallback ":"")+"cut-off "+secLabel(t)+" on "+wd, fallback:usedFallback };
+    }
+  }
+  return { at:null, note:"no cut-off found in the next 14 days", fallback:usedFallback };
+}
+
+function isDone(o){
+  const manual = DONE.has(String(o.doc));
+  const list = splitList(CFG.doneStatuses).map(norm);
+  const byStatus = list.length ? list.includes(norm(o.status)) : false;
+  switch(CFG.doneRule){
+    case "status":         return byStatus;
+    case "manualOrStatus": return manual || byStatus;
+    default:               return manual;
+  }
+}
+
+/* ---------------------- state ---------------------- */
+let ORDERS = [], STORES = new Map(), ALL = [], VIEW = [];
+let SRC = { orders:null, stores:null, sample:true };
+let SORT = { key:"remaining", dir:1 };
+let statusFilter = null;
+let OUT_OPEN = false;            // is the out-of-TAT block on the list opened to documents
+const expanded = new Set();
+
+/* ---------------------- demo data ----------------------
+   Invented documents and sites so the board is never empty for someone opening it
+   for the first time. Nothing here comes from a real operation.
+
+   The stamps are relative rather than fixed: a demo pinned to a date would show
+   nothing but breaches a week later, so each row carries how many hours ago it was
+   released and loadSample turns that into a live stamp. Against the placeholder
+   rules that lands a spread across every status band. */
+const SAMPLE_ORDERS_RAW = [
+  // hoursAgo, procType, doc, wave, bu, status, shipTo, shipToName, scenario, grade
+  [26,   "1005","9000004101","8000000450","RETAIL-A","Not Started",      "9001","DEMO-CENTRAL MALL",      "RETAIL-DOM","B"],
+  [5.5,  "1001","9000004102","8000000450","RETAIL-A","Partially Completed","9002","DEMO-HARBOUR PLAZA",  "RETAIL-DOM","B"],
+  [38,   "1005","9000004103","8000000451","RETAIL-B","Not Started",      "9003","DEMO-NORTHGATE CENTRE", "RETAIL-DOM","D"],
+  [23.4, "1005","9000004104","8000000451","RETAIL-A","Not Started",      "9004","DEMO-RIVERSIDE MALL",   "RETAIL-DOM","B"],
+  [7.5,  "1005","9000004105","8000000452","RETAIL-A","Partially Completed","9005","DEMO-AIRPORT ROAD",   "RETAIL-DOM","A"],
+  [22,   "1005","9000004106","8000000452","RETAIL-B","Not Started",      "9006","DEMO-LAKESIDE OUTLET",  "RETAIL-DOM","B"],
+  [6,    "1005","9000004107","8000000452","RETAIL-A","Not Started",      "9007","DEMO-MARKET SQUARE",    "RETAIL-DOM","A"],
+  [34.5, "1005","9000004108","8000000453","RETAIL-B","Not Started",      "9008","DEMO-WESTFIELD PARK",   "RETAIL-DOM","D"],
+  [19,   "1005","9000004109","8000000453","RETAIL-A","Not Started",      "9009","DEMO-GRAND BAZAAR",     "RETAIL-DOM","B"],
+  [3.5,  "1005","9000004110","8000000453","RETAIL-A","Not Started",      "9010","DEMO-STATION ARCADE",   "RETAIL-DOM","A"],
+  [32,   "1005","9000004111","8000000454","RETAIL-B","Not Started",      "9011","DEMO-SUNSET GALLERIA",  "RETAIL-DOM","D"],
+  [14,   "1005","9000004112","8000000454","RETAIL-B","Not Started",      "9012","DEMO-OLD TOWN STORE",   "RETAIL-DOM","C"],
+  [6,    "1005","9000004113","8000000455","WHOLESALE","Not Started",     "9002","DEMO-HARBOUR PLAZA",    "WHOLESALE", "B"],
+  [3,    "1005","9000004114","8000000455","RETAIL-B","Not Started",      "9008","DEMO-WESTFIELD PARK",   "RETAIL-EXP","B"],
+  [28,   "1005","9000004115","8000000449","RETAIL-A","Completed",        "9001","DEMO-CENTRAL MALL",     "RETAIL-DOM","B"],
+  [12,   "1005","9000004116","8000000449","RETAIL-A","Completed",        "9005","DEMO-AIRPORT ROAD",     "RETAIL-DOM","A"]
+];
+const SAMPLE_KEYS = ["hoursAgo","procType","doc","wave","bu","status","shipTo","shipToName","scenario","grade"];
+const SAMPLE_STORES_RAW = [
+  // site, order cut-off, grade, bu, name, weekday cut-off codes
+  ["9001","18:00","B","RETAIL-A","DEMO-CENTRAL MALL",     {Sat:"M2",Sun:"M2",Mon:"M2",Tue:"M2",Wed:"M2",Thu:"M2",Fri:"M2"}],
+  ["9002","18:00","B","RETAIL-A","DEMO-HARBOUR PLAZA",    {Sat:"M2",Sun:"M2",Mon:"M2",Tue:"M2",Wed:"M2",Thu:"M2",Fri:"M2"}],
+  ["9003","10:00","D","RETAIL-B","DEMO-NORTHGATE CENTRE", {Sun:"M1",Tue:"M1",Thu:"M1",Fri:"M1"}],
+  ["9004","18:00","B","RETAIL-A","DEMO-RIVERSIDE MALL",   {Sat:"M2",Sun:"M2",Mon:"M2",Tue:"M2",Wed:"M2",Thu:"M2",Fri:"M2"}],
+  ["9005","10:00","A","RETAIL-A","DEMO-AIRPORT ROAD",     {Sat:"M1",Sun:"M1",Mon:"M1",Tue:"M1",Wed:"M1",Thu:"M1",Fri:"M1"}],
+  ["9006","18:00","B","RETAIL-B","DEMO-LAKESIDE OUTLET",  {Sun:"M2",Tue:"M2",Thu:"M2",Fri:"M2"}],
+  ["9007","10:00","A","RETAIL-A","DEMO-MARKET SQUARE",    {Sat:"M1",Sun:"M1",Mon:"M1",Tue:"M1",Wed:"M1",Thu:"M1",Fri:"M1"}],
+  ["9008","10:00","D","RETAIL-B","DEMO-WESTFIELD PARK",   {Sun:"M1",Mon:"M1",Wed:"M1",Thu:"M1",Fri:"M1"}],
+  ["9009","18:00","B","RETAIL-A","DEMO-GRAND BAZAAR",     {Sat:"M2",Sun:"M2",Mon:"M2",Tue:"M2",Wed:"M2",Thu:"M2",Fri:"M2"}],
+  ["9010","10:00","A","RETAIL-A","DEMO-STATION ARCADE",   {Sun:"M1",Tue:"M1",Thu:"M1",Fri:"M1"}],
+  ["9011","10:00","D","RETAIL-B","DEMO-SUNSET GALLERIA",  {Sun:"M1",Tue:"M1",Thu:"M1",Fri:"M1"}],
+  ["9012","18:00","C","RETAIL-B","DEMO-OLD TOWN STORE",   {Sat:"M2",Sun:"M2",Mon:"M2",Tue:"M2",Wed:"M2",Thu:"M2",Fri:"M2"}]
+];
+function loadSample(){
+  const now = Date.now();
+  ORDERS = SAMPLE_ORDERS_RAW.map(row=>{
+    const o = {}; SAMPLE_KEYS.forEach((k,i)=>o[k] = row[i]);
+    // released is the stamp the clock runs from; created sits an hour before it.
+    const rel = new Date(now - o.hoursAgo*3600000);
+    const cre = new Date(rel.getTime() - 3600000);
+    const frac = d => (d.getHours()*3600 + d.getMinutes()*60) / 86400;
+    o.releaseDate = rel; o.releaseTime = frac(rel);
+    o.createdOn   = cre; o.createdAt   = frac(cre);
+    delete o.hoursAgo;
+    return o;
+  });
+  STORES = new Map();
+  SAMPLE_STORES_RAW.forEach(([site,cutoff,grade,bu,name,days])=>{
+    const d={}; for(const k in days) d[k]={codes:[days[k]], active:true};
+    STORES.set(String(site), {site:String(site), grade, name, bu, cutoff, days:d});
+  });
+  SRC = { orders:"Demo — 16 documents", stores:"Demo — 12 sites", sample:true };
+}
+
+/* ---------------------- compute ---------------------- */
+function compute(){
+  const cm = codeMap(), now = Date.now();
+  return ORDERS.map((o,idx)=>{
+    const created  = combine(parseDatePart(o.createdOn,  CFG.dateFmt), parseTimePart(o.createdAt));
+    const released = combine(parseDatePart(o.releaseDate, CFG.dateFmt), parseTimePart(o.releaseTime));
+    let ref=null, refKind="";
+    if(CFG.refSrc === "created"){ ref=created; refKind="created"; }
+    else if(CFG.refSrc === "release"){ ref=released; refKind="released"; }
+    else if(released!=null){ ref=released; refKind="released"; }
+    else { ref=created; refKind="created (not yet released)"; }
+
+    const store = STORES.get(String(o.shipTo).trim());
+    const rl = pickRule(o);
+    const tat = rl ? Number(rl.tat)||0 : 0;
+
+    let start=null, startNote="", fallback=false;
+    if(rl && ref!=null){ const s = resolveStart(ref, rl, store, cm); start=s.at; startNote=s.note; fallback=!!s.fallback; }
+    const expected = (start!=null && rl) ? start + tat*3600000 : null;
+    const done = isDone(o);
+    const remaining = expected==null ? null : expected - now;
+
+    return {
+      idx, doc:String(o.doc||""), wave:String(o.wave||""), bu:String(o.bu||""),
+      shipTo:String(o.shipTo||""), shipToName:String(o.shipToName||"") || (store?store.name:""),
+      scenario:String(o.scenario||""), grade:String(o.grade||"") || (store?store.grade:""),
+      procType:String(o.procType||""), status:String(o.status||""),
+      created, released, ref, refKind, start, startNote, expected, remaining, tat,
+      ruleName: rl?rl.name:"no rule matched", ruleStart: rl?rl.start:"",
+      storeFound:!!store, needsStore: !!(rl && rl.start==="store"), fallback,
+      done, doneAt: DONE.get(String(o.doc)) || null, manualDone: DONE.has(String(o.doc)),
+      bucket: done ? "done" : bucketOf(remaining, tat)
+    };
+  });
+}
+
+/* ---------------------- alert tone ----------------------
+   A single flat beep is the first thing a floor learns to ignore, so each preset
+   here is a short score instead: notes with a frequency, a start offset, a length
+   and an optional glide. Everything plays through one master gain, so the volume
+   slider in Settings moves every tone at once. */
+let AC = null, MASTER = null;
+const TONES = {
+  chime:  {name:"Chime — two-note bell", notes:[
+            {f:988, t:0,    d:.55, type:"triangle", g:1},
+            {f:1319,t:0,    d:.50, type:"sine",     g:.30},
+            {f:740, t:.30,  d:.80, type:"triangle", g:1},
+            {f:988, t:.30,  d:.70, type:"sine",     g:.26}]},
+  ping:   {name:"Ping — one soft note", notes:[
+            {f:1245,t:0, d:.45, type:"sine", g:1},
+            {f:1868,t:0, d:.26, type:"sine", g:.20}]},
+  triple: {name:"Triple beep — short and dry", notes:[
+            {f:880, t:0,    d:.15, type:"square", g:.55},
+            {f:880, t:.22,  d:.15, type:"square", g:.55},
+            {f:880, t:.44,  d:.15, type:"square", g:.55}]},
+  klaxon: {name:"Klaxon — rising alarm", notes:[
+            {f:420, t:0,    d:.38, type:"sawtooth", g:.5, to:880},
+            {f:420, t:.46,  d:.38, type:"sawtooth", g:.5, to:880}]},
+  siren:  {name:"Siren — sweeping", notes:[
+            {f:660, t:0,    d:.52, type:"triangle", g:.62, to:990},
+            {f:990, t:.52,  d:.52, type:"triangle", g:.62, to:660},
+            {f:660, t:1.04, d:.52, type:"triangle", g:.62, to:990}]},
+  knock:  {name:"Knock — low double thud", notes:[
+            {f:190, t:0,    d:.24, type:"sine", g:1},
+            {f:190, t:.26,  d:.24, type:"sine", g:1}]},
+  none:   {name:"Silent", notes:[]}
+};
+function scfg(){ return Object.assign({out:"chime", warn:"ping", vol:0.7, mute:false}, CFG.sound || {}); }
+function audio(){
+  AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+  if(AC.state === "suspended") AC.resume();
+  if(!MASTER){ MASTER = AC.createGain(); MASTER.connect(AC.destination); }
+  return AC;
+}
+// reps: how many times the preset repeats — a breach says it twice, a warning once.
+function playTone(kind, reps){
+  const s = scfg(), preset = TONES[kind] || TONES.chime;
+  if(s.mute || !preset.notes.length) return;
+  try{
+    const ac = audio();
+    const vol = Math.max(0, Math.min(1, Number(s.vol)));
+    MASTER.gain.setValueAtTime(vol * 0.55, ac.currentTime);
+    const span = Math.max.apply(null, preset.notes.map(x=>x.t + x.d)) + 0.14;
+    for(let r=0; r<Math.max(1, reps||1); r++){
+      const base = ac.currentTime + 0.03 + r*span;
+      preset.notes.forEach(x=>{
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.type = x.type;
+        o.frequency.setValueAtTime(x.f, base + x.t);
+        if(x.to) o.frequency.linearRampToValueAtTime(x.to, base + x.t + x.d);
+        g.gain.setValueAtTime(0.0001, base + x.t);
+        g.gain.exponentialRampToValueAtTime(Math.max(0.02, x.g * 0.5), base + x.t + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, base + x.t + x.d);
+        o.connect(g); g.connect(MASTER);
+        o.start(base + x.t); o.stop(base + x.t + x.d + 0.02);
+      });
+    }
+  }catch(e){}
+}
+function checkAlarms(rows){
+  if(!ALARM_ON) return;
+  const now = Date.now();
+  const repeat = Number(CFG.alarmRepeat)||0;
+  const watch = CFG.alarmWhen === "both" ? ["out","h1"] : ["out"];
+  const fresh = { out:[], h1:[] };
+  rows.forEach(r=>{
+    if(r.done || !watch.includes(r.bucket)) return;
+    const prev = ALARMED.get(r.doc);
+    const isNew = !prev || prev.level !== r.bucket;
+    const isRepeat = prev && prev.level === r.bucket && repeat > 0 && (now - prev.at) >= repeat;
+    if(isNew || isRepeat){ fresh[r.bucket].push(r.doc); ALARMED.set(r.doc, {level:r.bucket, at:now}); }
+  });
+  // a document that recovered (marked complete, or logic changed) can alert again later
+  const live = new Set(rows.filter(r=>!r.done && watch.includes(r.bucket)).map(r=>r.doc));
+  [...ALARMED.keys()].forEach(d=>{ if(!live.has(d)) ALARMED.delete(d); });
+
+  if(fresh.out.length){ playTone(scfg().out, 2); toast("Out of TAT", fresh.out, false); }
+  if(fresh.h1.length){ playTone(scfg().warn, 1); toast(bandLabels().h1, fresh.h1, true); }
+}
+function toast(title, docs, isWarn){
+  const host = $("#toasts");
+  const t = el("div","toast"+(isWarn?" warnlvl":""));
+  t.innerHTML = "<h4>"+esc(title)+" &middot; "+docs.length+" document"+(docs.length>1?"s":"")+"</h4>"+
+    "<div class='docs'>"+docs.slice(0,12).map(esc).join(", ")+(docs.length>12?" +"+(docs.length-12)+" more":"")+"</div>";
+  const row = el("div","row");
+  const show = el("button","btn","Show these");
+  show.onclick = ()=>{ statusFilter = isWarn?"h1":"out"; $("#fDone").value="hide"; render();
+    document.querySelector(".tablewrap").scrollIntoView({behavior:"smooth",block:"start"}); t.remove(); };
+  const dis = el("button","btn ghost","Dismiss");
+  dis.onclick = ()=>t.remove();
+  row.appendChild(show); row.appendChild(dis); t.appendChild(row);
+  host.appendChild(t);
+  setTimeout(()=>{ if(t.isConnected) t.remove(); }, 60000);
+}
+
+/* ---------------------- render ---------------------- */
+const $ = s => document.querySelector(s);
+const el = (t,c,x)=>{ const e=document.createElement(t); if(c)e.className=c; if(x!=null)e.textContent=x; return e; };
+const esc = s => String(s).replace(/[&<>"]/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+
+function recompute(){ ALL = compute(); checkAlarms(ALL); render(); renderWall(); }
+
+function applyFilters(rows){
+  const q = $("#fSearch").value.trim().toLowerCase();
+  const fs = $("#fScenario").value, fb = $("#fBu").value, fg = $("#fGrade").value,
+        fp = $("#fProc").value, fd = $("#fDone").value;
+  return rows.filter(r=>{
+    if(fd==="hide" && r.done) return false;
+    if(fd==="only" && !r.done) return false;
+    if(fs && r.scenario!==fs) return false;
+    if(fb && r.bu!==fb) return false;
+    if(fg && r.grade!==fg) return false;
+    if(fp && r.procType!==fp) return false;
+    if(statusFilter && r.bucket!==statusFilter) return false;
+    if(q){
+      const hay = (r.doc+" "+r.wave+" "+r.shipTo+" "+r.shipToName+" "+r.bu+" "+r.scenario+" "+r.status).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+function fillSelect(sel, values){
+  const cur = sel.value;
+  sel.innerHTML = "";
+  sel.appendChild(new Option("All",""));
+  values.forEach(v=>sel.appendChild(new Option(v,v)));
+  if(values.includes(cur)) sel.value = cur;
+}
+const uniq = (rows,key)=>[...new Set(rows.map(r=>r[key]).filter(Boolean))].sort();
+
+function render(){
+  const so=$("#srcOrders"), ss=$("#srcStores");
+  so.className = "src "+(SRC.sample?"sample":"loaded");
+  so.querySelector(".nm").textContent = SRC.orders || "not loaded";
+  ss.className = "src "+(SRC.stores ? (SRC.sample?"sample":"loaded") : "");
+  ss.querySelector(".nm").textContent = SRC.stores || "not loaded";
+
+  fillSelect($("#fScenario"), uniq(ALL,"scenario"));
+  fillSelect($("#fBu"), uniq(ALL,"bu"));
+  fillSelect($("#fGrade"), uniq(ALL,"grade"));
+  fillSelect($("#fProc"), uniq(ALL,"procType"));
+
+  // status filter — kept in step with the tiles and the count matrix
+  const fst = $("#fStatus");
+  const counts0 = {}; statusList().forEach(s=>counts0[s.k]=0);
+  ALL.forEach(r=>counts0[r.bucket]++);
+  fst.innerHTML = "";
+  fst.appendChild(new Option("All",""));
+  statusList().forEach(s=>fst.appendChild(new Option(s.label+" ("+counts0[s.k]+")", s.k)));
+  fst.value = statusFilter || "";
+
+  const nz = $("#notices"); nz.innerHTML="";
+  const noRule = ALL.filter(r=>r.ruleName==="no rule matched").length;
+  const missStore = ALL.filter(r=>r.needsStore && !r.storeFound).length;
+  const noRef = ALL.filter(r=>r.ref==null).length;
+  const noStart = ALL.filter(r=>r.ref!=null && r.start==null).length;
+  if(SRC.sample) addNotice(nz,"<b>Demo data.</b> Sixteen invented documents against twelve invented sites, and a placeholder set of rules &mdash; enough to show what the board does, and none of it real. Use <b>Upload</b> for your own extract, and <b>TAT logic &rsaquo; Import</b> for your own rules.");
+  if(missStore) addNotice(nz,"<b>"+missStore+" document"+(missStore>1?"s":"")+"</b> need a store cut-off row that is not in the master, so the rule's fallback cut-off was used. Look for the <span class='flag'>fallback</span> flag.");
+  if(noStart) addNotice(nz,"<b>"+noStart+" document"+(noStart>1?"s":"")+"</b> found no cut-off in the next 14 days &mdash; check the weekday columns for those stores.", true);
+  if(noRef) addNotice(nz,"<b>"+noRef+" document"+(noRef>1?"s":"")+"</b> have no usable date to start the clock from.", true);
+  if(noRule) addNotice(nz,"<b>"+noRule+" document"+(noRule>1?"s":"")+"</b> matched no rule. Add a catch-all rule at the bottom of the TAT logic.", true);
+  // The commonest reason a fresh upload seems to change nothing: the extract says a
+  // document is picked, and the board has been told to count hand marks only.
+  const srcDone = CFG.doneRule === "manual"
+    ? ALL.filter(r=>!r.done && splitList(CFG.doneStatuses).map(norm).includes(norm(r.status))).length : 0;
+  if(srcDone) addNotice(nz,"<b>"+srcDone+" document"+(srcDone>1?"s":"")+"</b> the extract already reports as <b>"+
+    esc(CFG.doneStatuses)+"</b> are still counted as open, because completion is set to hand marks only. "+
+    "Switch it under <b>TAT logic &rsaquo; Completion</b> to have a re-upload close them.");
+  const unk = unknownCodes();
+  if(unk.length) addNotice(nz,"The store master uses the cut-off code"+(unk.length>1?"s":"")+" <b>"+unk.map(esc).join("</b>, <b>")+
+    "</b>, which "+(unk.length>1?"are":"is")+" not in the code table. Those days currently take the store's own <b>Order Cut-Offs</b> time instead. Give "+
+    (unk.length>1?"them":"it")+" a time under <b>TAT logic &rsaquo; Cut-off codes</b>.");
+
+  // signal strip — document counts
+  const sig = $("#signal"); sig.innerHTML="";
+  const counts = {}; statusList().forEach(s=>counts[s.k]=0);
+  ALL.forEach(r=>counts[r.bucket]++);
+  statusList().forEach(s=>{
+    const b = el("button","sig "+s.cls+(s.k==="out"&&counts.out>0?" live":""));
+    b.setAttribute("aria-pressed", statusFilter===s.k?"true":"false");
+    b.innerHTML = "<span class='lbl'>"+esc(s.label)+"</span><span class='n'>"+counts[s.k]+"</span>"+
+      "<span class='meta'>"+(counts[s.k]===1?"document":"documents")+" &middot; "+s.note+"</span>";
+    b.onclick = ()=>{ statusFilter = statusFilter===s.k?null:s.k;
+      if(statusFilter==="done") $("#fDone").value="only";
+      else if($("#fDone").value==="only") $("#fDone").value="hide";
+      render(); };
+    sig.appendChild(b);
+  });
+
+  renderMatrix(); renderHist();
+
+  VIEW = applyFilters(ALL); sortView(); renderTable();
+  $("#rowCount").innerHTML = "<b>"+VIEW.length+"</b> of "+ALL.length+" documents";
+  $("#calcHint").textContent = ALL.length ? ALL.length+" documents · "+CFG.rules.filter(r=>r.on).length+" active rules · live" : "";
+  $("#doneCount").textContent = DONE.size ? DONE.size+" marked complete on this browser" : "nothing marked yet";
+}
+// Cut-off codes present in the master that the code table cannot turn into a time.
+function unknownCodes(){
+  const cm = codeMap(), s = new Set();
+  STORES.forEach(st=>{
+    Object.values(st.days||{}).forEach(d=>(d.codes||[]).forEach(c=>{
+      if(cm[norm(c)] == null && !/[:.]/.test(c)) s.add(c);
+    }));
+  });
+  return [...s].sort();
+}
+function addNotice(p, html, err){
+  const d = el("div","notice"+(err?" err":""));
+  d.innerHTML = "<span>&#9888;</span><span>"+html+"</span>";
+  p.appendChild(d);
+}
+
+function renderMatrix(){
+  const dim = $("#mxDim").value;
+  const sts = statusList();
+  const groups = new Map();
+  ALL.forEach(r=>{
+    const k = dim==="shipTo" ? ((r.shipTo+" "+(r.shipToName||"")).trim() || "(blank)") : (r[dim] || "(blank)");
+    if(!groups.has(k)) groups.set(k, {key:r[dim]||"", n:0});
+    const g = groups.get(k); g[r.bucket]=(g[r.bucket]||0)+1; g.n++;
+  });
+  const sev = g => (g.out||0)*1e6 + (g.h1||0)*1e4 + (g.h3||0)*1e2 + (g.h6||0);
+  const list = [...groups.entries()].sort((a,b)=> sev(b[1])-sev(a[1]) || b[1].n-a[1].n).slice(0,12);
+
+  const t = $("#matrix");
+  let html = "<thead><tr><th>"+({scenario:"Scenario",bu:"BU",grade:"Grade",procType:"Proc. type",shipTo:"Store",wave:"Wave"}[dim])+"</th>"+
+    sts.map(s=>"<th>"+esc(s.label)+"</th>").join("")+"<th>Total</th></tr></thead><tbody>";
+  if(!list.length){
+    html += "<tr><td colspan='"+(sts.length+2)+"' style='text-align:center;padding:20px;color:var(--text-3)'>No documents loaded.</td></tr>";
+  }
+  list.forEach(([k,g])=>{
+    html += "<tr><td title='"+esc(k)+"'>"+esc(k)+"</td>"+
+      sts.map(s=>{
+        const n = g[s.k]||0;
+        return "<td class='"+(n?"c-"+s.k+" hit":"z")+"' data-k='"+esc(k)+"' data-v='"+esc(g.key)+"' data-s='"+s.k+"'>"+n+"</td>";
+      }).join("")+"<td class='tt'>"+g.n+"</td></tr>";
+  });
+  const tot = {}; sts.forEach(s=>tot[s.k]=ALL.filter(r=>r.bucket===s.k).length);
+  html += "<tr class='tot'><td>All documents</td>"+sts.map(s=>"<td class='c-"+s.k+"'>"+tot[s.k]+"</td>").join("")+"<td class='tt'>"+ALL.length+"</td></tr>";
+  html += "</tbody>";
+  t.innerHTML = html;
+
+  t.querySelectorAll("td.hit").forEach(td=>{
+    td.onclick = ()=>{
+      const s = td.dataset.s, v = td.dataset.v;
+      statusFilter = s;
+      $("#fDone").value = s==="done" ? "only" : "hide";
+      ["fScenario","fBu","fGrade","fProc"].forEach(id=>$("#"+id).value="");
+      $("#fSearch").value = "";
+      if(dim==="scenario") $("#fScenario").value = v;
+      else if(dim==="bu") $("#fBu").value = v;
+      else if(dim==="grade") $("#fGrade").value = v;
+      else if(dim==="procType") $("#fProc").value = v;
+      else $("#fSearch").value = v;
+      render();
+      document.querySelector(".tablewrap").scrollIntoView({behavior:"smooth",block:"start"});
+    };
+  });
+}
+
+const HIST = [
+  {lo:-Infinity, hi:0, lab:"late",  c:"out"},
+  {lo:0,  hi:1,  lab:"<1h",    c:"crit"},
+  {lo:1,  hi:2,  lab:"1-2h",   c:"crit"},
+  {lo:2,  hi:4,  lab:"2-4h",   c:"warn"},
+  {lo:4,  hi:8,  lab:"4-8h",   c:"warn"},
+  {lo:8,  hi:12, lab:"8-12h",  c:"ok"},
+  {lo:12, hi:24, lab:"12-24h", c:"ok"},
+  {lo:24, hi:Infinity, lab:"24h+", c:"calm"}
+];
+function renderHist(){
+  const rows = ALL.filter(r=>!r.done && r.remaining!=null);
+  const counts = HIST.map(b=>rows.filter(r=>{ const h=r.remaining/3600000; return h>=b.lo && h<b.hi; }).length);
+  const max = Math.max(1, ...counts);
+  const host = $("#hist"); host.innerHTML="";
+  counts.forEach((n,i)=>{
+    const c = el("div","hcol");
+    const h = n ? Math.max(4, Math.round(n/max*100)) : 2;
+    c.innerHTML = "<div class='hn'>"+(n||"")+"</div><div class='hb' style='height:"+h+"px;background:var(--"+HIST[i].c+");opacity:"+(n?1:.18)+"'></div>";
+    host.appendChild(c);
+  });
+  $("#histLabels").innerHTML = HIST.map(b=>"<div>"+b.lab+"</div>").join("");
+}
+
+const COLS = [
+  {k:"doc",t:"Document"}, {k:"shipTo",t:"Store"}, {k:"bu",t:"BU"}, {k:"scenario",t:"Scenario"},
+  {k:"grade",t:"Gr"}, {k:"procType",t:"PT"}, {k:"ref",t:"Released"}, {k:"start",t:"Revised start"},
+  {k:"tat",t:"TAT",num:true}, {k:"expected",t:"Expected pack"}, {k:"remaining",t:"Remaining",num:true},
+  {k:"bucket",t:"Status"}, {k:"act",t:"Complete",act:true}
+];
+// How much of an OBD's TAT has been spent, 0-100, or null when it should not be drawn.
+function tatUsed(r){
+  if(!CFG.rowFill) return null;
+  if(r.done || r.remaining == null || !(r.tat > 0)) return null;
+  const total = r.tat * 3600000;
+  return Math.max(0, Math.min(100, (total - r.remaining) / total * 100));
+}
+/* The floor reads the list top-down and works it in that order, so the top has to
+   be the thing that can still be saved: whatever breaches next. A document already
+   out of TAT cannot be brought back inside it, so it drops below the live queue,
+   with documents that have no clock and then completed work under that. */
+function urgencyRank(r){
+  if(r.done) return 3;
+  if(r.remaining == null) return 2;
+  return r.remaining < 0 ? 1 : 0;
+}
+function byUrgency(a, b){
+  const ra = urgencyRank(a), rb = urgencyRank(b);
+  if(ra !== rb) return ra - rb;
+  if(a.remaining == null || b.remaining == null) return 0;
+  return a.remaining - b.remaining;   // inside each block: least time left first
+}
+function sortView(){
+  const k = SORT.key, d = SORT.dir;
+  const ord = {out:0,h1:1,h3:2,h6:3,safe:4,done:5};
+  VIEW.sort((a,b)=>{
+    if(k==="remaining") return byUrgency(a,b) * d;
+    let av=a[k], bv=b[k];
+    if(k==="bucket"){ av=ord[av]; bv=ord[bv]; }
+    if(typeof av==="number" || typeof bv==="number") return ((av||0)-(bv||0))*d;
+    return String(av||"").localeCompare(String(bv||""))*d;
+  });
+}
+function renderTable(){
+  const L = bandLabels();
+  const th = $("#thead"); th.innerHTML = "<th class='stripe'></th>";
+  COLS.forEach(c=>{
+    const e = el("th", (c.num?"num ":"")+(c.act?"act":""));
+    if(c.act){ e.textContent = c.t; }
+    else{
+      e.innerHTML = c.t + (SORT.key===c.k ? " <span style='opacity:.45;font-size:8px'>"+(SORT.dir>0?"▲":"▼")+"</span>" : "");
+      e.onclick = ()=>{ if(SORT.key===c.k) SORT.dir*=-1; else { SORT.key=c.k; SORT.dir=1; } render(); };
+    }
+    th.appendChild(e);
+  });
+
+  const tb = $("#tbody"); tb.innerHTML="";
+  if(!VIEW.length){
+    tb.innerHTML = "<tr><td colspan='"+(COLS.length+1)+"'><div class='empty'><h3>Nothing matches these filters</h3><div>Clear a filter, or switch <b>Completed</b> to shown.</div></div></td></tr>";
+    return;
+  }
+  // Grouping only makes sense while the list is in urgency order, and never when
+  // the board has been filtered down to the breached documents on purpose.
+  const grouped = SORT.key === "remaining" && SORT.dir > 0 &&
+                  CFG.groupOut !== false && statusFilter !== "out";
+  const outRows = grouped ? VIEW.filter(r=>!r.done && r.bucket === "out") : [];
+  let headPlaced = false;
+
+  const frag = document.createDocumentFragment();
+  VIEW.forEach(rw=>{
+    if(outRows.length && !rw.done && rw.bucket === "out"){
+      if(!headPlaced){ headPlaced = true; frag.appendChild(outGroupHead(outRows)); }
+      if(!OUT_OPEN) return;
+    }
+    const used = tatUsed(rw);
+    const tr = el("tr","r-"+rw.bucket+(expanded.has(rw.idx)?" sel":"")+(used!=null?" fill":""));
+    if(used != null) tr.style.setProperty("--fp", used.toFixed(1)+"%");
+    tr.onclick = ()=>{ expanded.has(rw.idx) ? expanded.delete(rw.idx) : expanded.add(rw.idx); renderTable(); };
+    const flag = (rw.needsStore && !rw.storeFound)
+      ? "<span class='flag' title='No row for this site code in the store master — the rule fallback cut-off was used'>fallback</span>" : "";
+    tr.innerHTML =
+      "<td class='stripe'></td>"+
+      "<td class='doc'>"+esc(rw.doc)+"</td>"+
+      "<td class='store'><span class='cd'>"+esc(rw.shipTo)+"</span>"+flag+"<span class='nm'>"+esc(rw.shipToName||"")+"</span></td>"+
+      "<td class='cat'>"+esc(rw.bu)+"</td>"+
+      "<td class='cat'>"+esc(rw.scenario)+"</td>"+
+      "<td><span class='chip'>"+esc(rw.grade||"—")+"</span></td>"+
+      "<td><span class='chip'>"+esc(rw.procType)+"</span></td>"+
+      "<td class='time'>"+fmtDT(rw.ref)+"</td>"+
+      "<td class='time'>"+fmtDT(rw.start)+"</td>"+
+      "<td class='num time'>"+rw.tat+"h</td>"+
+      "<td class='time'>"+fmtDT(rw.expected)+"</td>"+
+      "<td class='num rem'>"+(rw.done?"—":fmtDur(rw.remaining))+"</td>"+
+      "<td><span class='pill p-"+rw.bucket+"'>"+esc(L[rw.bucket])+"</span></td>"+
+      "<td class='act'></td>";
+
+    const cell = tr.lastElementChild;
+    const btn = el("button","doneBtn"+(rw.manualDone?" is-done":""));
+    if(rw.manualDone){
+      btn.textContent = "✓ " + new Date(rw.doneAt).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+      btn.title = "Marked complete "+fmtDTFull(new Date(rw.doneAt).getTime())+" — click to undo";
+    }else{
+      btn.textContent = "Mark complete";
+      btn.title = "Record this document as picked and stop its TAT clock";
+    }
+    btn.onclick = e=>{
+      e.stopPropagation();
+      const d = String(rw.doc);
+      const wasDone = DONE.has(d);
+      if(wasDone) DONE.delete(d); else DONE.set(d, new Date().toISOString());
+      saveDone(); recompute();
+      if(!wasDone) doneToast(d);
+    };
+    cell.appendChild(btn);
+    frag.appendChild(tr);
+
+    if(expanded.has(rw.idx)){
+      const dr = el("tr","detail");
+      const td = el("td"); td.colSpan = COLS.length+1;
+      td.innerHTML = "<div class='trace'>"+
+        step("Rule matched", rw.ruleName, "scenario "+(rw.scenario||"—")+" · grade "+(rw.grade||"—")+" · proc. type "+(rw.procType||"—"))+
+        step("Clock reference", fmtDTFull(rw.ref), "taken from "+rw.refKind)+
+        step("Revised start", fmtDTFull(rw.start), rw.startNote||"—")+
+        step("TAT applied", rw.tat+" hours", rw.ruleStart==="store" ? "store cut-off calendar" : rw.ruleStart==="cutoff" ? "fixed cut-off on the rule" : "starts at the order stamp")+
+        step("Expected packing", fmtDTFull(rw.expected), rw.done ? "complete — clock stopped" : fmtDur(rw.remaining)+" from now")+
+        step("Source status", rw.status||"—", rw.manualDone ? "marked complete here at "+fmtDTFull(new Date(rw.doneAt).getTime()) : "not marked complete on this board")+
+        "</div>";
+      td.onclick = e=>e.stopPropagation();
+      dr.appendChild(td); frag.appendChild(dr);
+    }
+  });
+  tb.appendChild(frag);
+}
+// A breached document cannot be pulled back inside its TAT, so the list reports the
+// whole backlog on one line — how many, how bad, and which BUs it sits in — and only
+// spells out the document numbers when someone opens it.
+function outGroupHead(rows){
+  const worst = rows.reduce((m,r)=>Math.min(m, r.remaining), 0);
+  const by = new Map();
+  rows.forEach(r=>{ const k = r.bu || "—"; by.set(k, (by.get(k)||0)+1); });
+  const top = [...by.entries()].sort((a,b)=>b[1]-a[1]).slice(0,4)
+              .map(([k,c])=>esc(k)+"&nbsp;"+c).join(" &middot; ");
+  const d = el("div","ghead"+(OUT_OPEN?" open":""));
+  d.innerHTML = "<span class='cv'>&#9654;</span><span class='gt'>Out of TAT</span>"+
+    "<span class='gn'>"+rows.length+"</span>"+
+    "<span class='gx'>"+(OUT_OPEN ? "hide documents" : "show documents")+"</span>"+
+    "<span class='gw'>worst "+fmtDur(worst).replace("−","")+" over</span>"+
+    "<span class='gs'>"+top+"</span>";
+  d.title = OUT_OPEN ? "Close the out-of-TAT block" : "Open the out-of-TAT block to document level";
+  d.onclick = e=>{
+    e.stopPropagation();
+    OUT_OPEN = !OUT_OPEN;
+    CFG.groupOutOpen = OUT_OPEN; saveCfg();
+    renderTable();
+  };
+  const td = el("td"); td.colSpan = COLS.length + 1; td.appendChild(d);
+  const tr = el("tr","grouphead"); tr.appendChild(td);
+  return tr;
+}
+// Completed rows leave the working list, so confirm the mark and offer the way back.
+function doneToast(doc){
+  const host = $("#toasts");
+  const t = el("div","toast okmsg");
+  t.innerHTML = "<h4>Marked complete</h4><div class='docs'>"+esc(doc)+"</div>";
+  const row = el("div","row");
+  const undo = el("button","btn","Undo");
+  undo.onclick = ()=>{ DONE.delete(String(doc)); saveDone(); recompute(); t.remove(); };
+  const show = el("button","btn ghost","Show completed");
+  show.onclick = ()=>{ statusFilter=null; $("#fDone").value="only"; render(); t.remove(); };
+  row.appendChild(undo); row.appendChild(show); t.appendChild(row);
+  host.appendChild(t);
+  setTimeout(()=>{ if(t.isConnected) t.remove(); }, 12000);
+}
+// A re-upload that lands on a board full of the same numbers looks like nothing
+// happened, so say plainly what was read and how much of it is already closed.
+function dataToast(name){
+  const host = $("#toasts");
+  const t = el("div","toast okmsg");
+  const done = ALL.filter(r=>r.done).length, out = ALL.filter(r=>r.bucket==="out").length;
+  t.innerHTML = "<h4>Data refreshed</h4><div class='docs'>"+esc(name)+" &middot; "+ALL.length+
+    " documents &middot; "+done+" complete &middot; "+out+" out of TAT</div>";
+  const row = el("div","row");
+  const dis = el("button","btn ghost","Dismiss");
+  dis.onclick = ()=>t.remove();
+  row.appendChild(dis); t.appendChild(row);
+  host.appendChild(t);
+  setTimeout(()=>{ if(t.isConnected) t.remove(); }, 12000);
+}
+function step(k,v,n){ return "<div class='step'><div class='st-k'>"+k+"</div><div class='st-v'>"+esc(v)+"</div><div class='st-n'>"+esc(n)+"</div></div>"; }
+
+/* ---------------------- logic drawer ---------------------- */
+function renderRules(){
+  const host = $("#rules"); host.innerHTML="";
+  CFG.rules.forEach((rl,i)=>{
+    const box = el("div","rule"+(rl.on?"":" off"));
+    const h = el("div","rule-h");
+    h.innerHTML = "<span class='ord mono'>"+(i+1)+"</span>";
+    const sw = el("button","sw"); sw.setAttribute("aria-checked", rl.on?"true":"false");
+    sw.title = "Enable or skip this rule";
+    sw.onclick = ()=>{ rl.on=!rl.on; commit(); };
+    h.appendChild(sw);
+    const nm = document.createElement("input"); nm.className="nm"; nm.value=rl.name;
+    nm.oninput = ()=>{ rl.name=nm.value; saveCfg(); };
+    h.appendChild(nm);
+    h.appendChild(iconBtn("↑","Move up",()=>{ if(i>0){ CFG.rules.splice(i-1,0,CFG.rules.splice(i,1)[0]); commit(); }}));
+    h.appendChild(iconBtn("↓","Move down",()=>{ if(i<CFG.rules.length-1){ CFG.rules.splice(i+1,0,CFG.rules.splice(i,1)[0]); commit(); }}));
+    h.appendChild(iconBtn("⧉","Duplicate",()=>{ const c=JSON.parse(JSON.stringify(rl)); c.id=rid(); c.name=rl.name+" (copy)"; CFG.rules.splice(i+1,0,c); commit(); }));
+    const del = iconBtn("×","Delete",()=>{ CFG.rules.splice(i,1); commit(); }); del.classList.add("danger");
+    h.appendChild(del);
+    box.appendChild(h);
+
+    const b = el("div","rule-b");
+    b.appendChild(field("Proc. type is", rl.m.procType, v=>rl.m.procType=v, "any"));
+    b.appendChild(field("Scenario is", rl.m.scenario, v=>rl.m.scenario=v, "any"));
+    b.appendChild(field("Store grade is", rl.m.grade, v=>rl.m.grade=v, "any"));
+    b.appendChild(field("BU is", rl.m.bu, v=>rl.m.bu=v, "any"));
+    b.appendChild(numField("TAT hours", rl.tat, v=>rl.tat=v));
+
+    const sf = el("label","f"); sf.innerHTML = "<span>Clock starts at</span>";
+    const sel = document.createElement("select");
+    [["store","Store cut-off calendar"],["cutoff","Fixed cut-off time"],["immediate","The order stamp itself"]]
+      .forEach(([v,t])=>sel.appendChild(new Option(t,v)));
+    sel.value = rl.start;
+    sel.onchange = ()=>{ rl.start = sel.value; commit(); };
+    sf.appendChild(sel);
+    sf.appendChild(hint(rl.start==="store" ? "Per site code, per weekday, from the master."
+      : rl.start==="cutoff" ? "The same time every selected day." : "No cut-off — TAT runs from release."));
+    b.appendChild(sf);
+
+    if(rl.start === "store"){
+      const cs = el("label","f"); cs.innerHTML = "<span>Take the cut-off time from</span>";
+      const s2 = document.createElement("select");
+      [["codes","The weekday code (C1 / C3)"],["column","The Order Cut-Offs column"],["both","Both, earliest one wins"]]
+        .forEach(([v,t])=>s2.appendChild(new Option(t,v)));
+      s2.value = rl.storeSrc || "codes";
+      s2.onchange = ()=>{ rl.storeSrc = s2.value; commit(); };
+      cs.appendChild(s2);
+      cs.appendChild(hint("A weekday with no code is still a day the store takes no order."));
+      b.appendChild(cs);
+    }
+    if(rl.start !== "immediate"){
+      b.appendChild(field(rl.start==="store"?"Fallback cut-off times":"Cut-off times", rl.times, v=>rl.times=v, "09:00, 19:00"));
+      b.appendChild(numField("Grace minutes", rl.grace, v=>rl.grace=v, "Orders arriving this long after a cut-off still make it."));
+      const df = el("div","f");
+      df.innerHTML = "<span>"+(rl.start==="store"?"Fallback days":"Days with a cut-off")+"</span>";
+      const dd = el("div","days");
+      DAY_ORDER.forEach(d=>{
+        const bt = el("button",(rl.days||[]).includes(d)?"on":"", d); bt.type="button";
+        bt.onclick = ()=>{ rl.days = rl.days||[];
+          rl.days = rl.days.includes(d) ? rl.days.filter(x=>x!==d) : rl.days.concat([d]); commit(); };
+        dd.appendChild(bt);
+      });
+      df.appendChild(dd); b.appendChild(df);
+    }
+    box.appendChild(b); host.appendChild(box);
+  });
+}
+function iconBtn(t,title,fn){ const b=el("button","iconbtn",t); b.type="button"; b.title=title; b.onclick=fn; return b; }
+function hint(t){ return el("span","fh",t); }
+function field(label,val,set,ph){
+  const l = el("label","f"); l.innerHTML = "<span>"+label+"</span>";
+  const i = document.createElement("input"); i.type="text"; i.value = val==null?"":val; i.placeholder = ph||"";
+  i.oninput = ()=>{ set(i.value); saveCfg(); recompute(); };
+  l.appendChild(i); return l;
+}
+function numField(label,val,set,note){
+  const l = el("label","f"); l.innerHTML = "<span>"+label+"</span>";
+  const i = document.createElement("input"); i.type="number"; i.step="1"; i.min="0"; i.value = val;
+  i.oninput = ()=>{ set(i.value===""?0:Number(i.value)); saveCfg(); recompute(); };
+  l.appendChild(i); if(note) l.appendChild(hint(note)); return l;
+}
+function commit(){ saveCfg(); renderRules(); recompute(); }
+
+function renderCodes(){
+  const host = $("#codes"); host.innerHTML="";
+  (CFG.codes||[]).forEach((c,i)=>{
+    const row = el("div","coderow");
+    const code = document.createElement("input"); code.type="text"; code.value=c.code; code.placeholder="C1";
+    code.oninput = ()=>{ c.code = code.value.trim(); saveCfg(); recompute(); };
+    const time = document.createElement("input"); time.type="time"; time.value=c.time;
+    time.oninput = ()=>{ c.time = time.value; saveCfg(); recompute(); };
+    row.appendChild(code); row.appendChild(el("span","ar","→")); row.appendChild(time);
+    row.appendChild(iconBtn("×","Remove",()=>{ CFG.codes.splice(i,1); saveCfg(); renderCodes(); recompute(); }));
+    host.appendChild(row);
+  });
+}
+function renderBandPreview(){
+  const L = bandLabels(), host = $("#bandPreview"); host.innerHTML="";
+  ["out","h1","h3","h6","safe"].forEach(k=>{
+    const s = el("span","pill p-"+k, L[k]); host.appendChild(s);
+  });
+}
+function syncLogicInputs(){
+  const u = CFG.bandMode==="pct" ? "%" : "hours";
+  $("#optBandMode").value = CFG.bandMode;
+  $("#optE1").value = CFG.bands.e1; $("#optE2").value = CFG.bands.e2; $("#optE3").value = CFG.bands.e3;
+  $("#lb1").textContent = "Red band — under ("+u+")";
+  $("#lb2").textContent = "Amber band — under ("+u+")";
+  $("#lb3").textContent = "Green band — under ("+u+")";
+  const wo = wcfg();
+  $("#wOptRows").value = wo.rows; $("#wOptSec").value = wo.pageSec;
+  $("#wOptBu").value = wo.bu || ""; $("#wOptSc").value = wo.scenario || "";
+  $("#wOptRotate").setAttribute("aria-checked", wo.rotateDim?"true":"false");
+  $("#wOptTicker").setAttribute("aria-checked", wo.ticker!==false?"true":"false");
+  $("#wOptAmb").setAttribute("aria-checked", wo.ambient!==false?"true":"false");
+  $("#wOptGroupOut").setAttribute("aria-checked", wo.groupOut!==false?"true":"false");
+  $("#wOptTickSpd").value = String(Number(wo.tickerSpeed) || 55);
+  renderWallStatuses();
+  $("#optRowFill").setAttribute("aria-checked", CFG.rowFill ? "true" : "false");
+  $("#optGroupOut").setAttribute("aria-checked", CFG.groupOut!==false?"true":"false");
+  $("#optDoneRule").value = CFG.doneRule;
+  $("#optDoneStatus").value = CFG.doneStatuses;
+  $("#optDateFmt").value = CFG.dateFmt;
+  $("#optRefSrc").value = CFG.refSrc;
+  renderBandPreview();
+}
+// Which statuses the wall screen carries at all — a picking hall and a bulk lane can
+// run the same file and show different halves of it.
+function renderWallStatuses(){
+  const host = $("#wOptStatuses"); if(!host) return;
+  const sel = wcfg().statuses || [];
+  host.innerHTML = "";
+  statusList().forEach(st=>{
+    const b = el("button", null, st.label);
+    b.type = "button";
+    b.setAttribute("aria-pressed", sel.includes(st.k) ? "true" : "false");
+    b.onclick = ()=>{
+      const c = (CFG.wall = wcfg());
+      const i = c.statuses.indexOf(st.k);
+      if(i >= 0){ if(c.statuses.length > 1) c.statuses.splice(i,1); }
+      else c.statuses.push(st.k);
+      saveCfg(); renderWallStatuses(); renderWall();
+    };
+    host.appendChild(b);
+  });
+}
+function syncSettingsInputs(){
+  const so = scfg();
+  const opts = k => Object.keys(TONES).map(t=>
+    "<option value='"+t+"'"+(so[k]===t?" selected":"")+">"+esc(TONES[t].name)+"</option>").join("");
+  $("#optToneOut").innerHTML  = opts("out");
+  $("#optToneWarn").innerHTML = opts("warn");
+  $("#optVol").value = Math.round(Math.max(0, Math.min(1, Number(so.vol)))*100);
+  $("#volVal").textContent = $("#optVol").value + "%";
+  $("#optMute").setAttribute("aria-checked", so.mute ? "true" : "false");
+  $("#setAlarmOn").setAttribute("aria-checked", ALARM_ON ? "true" : "false");
+  $("#optAlarmWhen").value = CFG.alarmWhen;
+  $("#optAlarmRepeat").value = String(CFG.alarmRepeat);
+  let th = ""; try{ th = localStorage.getItem("pickTat.theme") || ""; }catch(e){}
+  $("#optTheme").value = th;
+}
+
+/* ---------------------- file loading ---------------------- */
+function readWorkbook(file){
+  return new Promise((res,rej)=>{
+    const fr = new FileReader();
+    fr.onerror = ()=>rej(new Error("Could not read the file."));
+    fr.onload = e=>{
+      try{ res(XLSX.read(new Uint8Array(e.target.result), {type:"array", cellDates:true})); }
+      catch(err){ rej(new Error("That does not look like a readable Excel or CSV file.")); }
+    };
+    fr.readAsArrayBuffer(file);
+  });
+}
+function findTable(wb, dict, minHits){
+  let best = null;
+  for(const name of wb.SheetNames){
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], {header:1, raw:true, defval:"", blankrows:false});
+    for(let i=0;i<Math.min(rows.length,12);i++){
+      const map = mapHeaders(rows[i], dict);
+      const hits = Object.keys(map).length;
+      if(hits>=minHits && (!best || hits>best.hits)) best = {sheet:name, headerRow:i, rows, map, hits};
+    }
+  }
+  return best;
+}
+async function loadOrdersFile(file){
+  const wb = await readWorkbook(file);
+  const t = findTable(wb, ORDER_COLS, 5);
+  if(!t) throw new Error("No sheet in that file has the expected picking columns (Document, Business Scenario, Created On…). Check the header row is intact.");
+  const g = (row,key)=> t.map[key]===undefined ? "" : (row[t.map[key]]===undefined ? "" : row[t.map[key]]);
+  ORDERS = t.rows.slice(t.headerRow+1).filter(row=>String(g(row,"doc")).trim()!=="").map(row=>({
+    createdOn:g(row,"createdOn"), createdAt:g(row,"createdAt"),
+    releaseDate:g(row,"releaseDate"), releaseTime:g(row,"releaseTime"),
+    procType:g(row,"procType"), doc:g(row,"doc"), wave:g(row,"wave"), bu:g(row,"bu"),
+    status:g(row,"status"), shipTo:String(g(row,"shipTo")).trim(), shipToName:g(row,"shipToName"),
+    scenario:g(row,"scenario"), grade:g(row,"grade")
+  }));
+  SRC.orders = file.name+" — "+ORDERS.length+" documents";
+  SRC.sample = false;
+  LOADED_AT = Date.now();
+  const missing = Object.keys(ORDER_COLS).filter(k=>t.map[k]===undefined);
+  $("#ordersInfo").innerHTML = "Read <b>"+ORDERS.length+"</b> documents from sheet <code>"+esc(t.sheet)+"</code>."+
+    (missing.length ? " Columns not found: <code>"+missing.join("</code> <code>")+"</code>." : " All expected columns found.");
+}
+async function loadStoresFile(file){
+  const wb = await readWorkbook(file);
+  const t = findTable(wb, STORE_COLS, 2);
+  if(!t) throw new Error("No sheet in that file has a Site Code column.");
+  const dayCols = mapDayCols(t.rows[t.headerRow]);
+  const g = (row,key)=> t.map[key]===undefined ? "" : (row[t.map[key]]===undefined ? "" : row[t.map[key]]);
+  // A time cell may arrive as a Date, as an Excel day fraction (0.375 = 09:00), or as text.
+  const asTime = v => {
+    if(v instanceof Date && !isNaN(v)) return secLabel(v.getHours()*3600 + v.getMinutes()*60);
+    if(typeof v === "number") return secLabel(Math.round((v - Math.floor(v))*86400));
+    const s = String(v==null?"":v).trim();
+    if(/^0?\.\d+$/.test(s)) return secLabel(Math.round(parseFloat(s)*86400));
+    return s;
+  };
+  const m = new Map();
+  t.rows.slice(t.headerRow+1).forEach(row=>{
+    const site = String(g(row,"site")).trim();
+    if(!site || site==="0") return;
+    // Only the block carrying cut-off codes defines cut-off days. A Y/blank block is a
+    // delivery calendar and names different days, so it must not open a cut-off day —
+    // it is used only when the sheet carries no cut-off codes for this store at all.
+    const days = {}, markedOnly = {};
+    for(const d in dayCols){
+      const codes = []; let marked = false;
+      dayCols[d].forEach(ci=>{
+        const s = asTime(row[ci]);
+        if(!s) return;
+        if(isDayMarker(s)){ marked = true; return; }
+        String(s).split(/[^A-Za-z0-9:.]+/).filter(Boolean).forEach(p=>codes.push(p));
+      });
+      if(codes.length) days[d] = {codes, active:true};
+      else if(marked) markedOnly[d] = true;
+    }
+    if(!Object.keys(days).length){
+      for(const d in markedOnly) days[d] = {codes:[], active:true};
+    }
+    m.set(site, { site, grade:String(g(row,"grade")).trim(), name:String(g(row,"name")).trim(),
+      bu:String(g(row,"bu")).trim(), cutoff:asTime(g(row,"cutoff")), days });
+  });
+  STORES = m;
+  SRC.stores = file.name+" — "+m.size+" sites";
+  const found = Object.keys(dayCols);
+  const multi = found.filter(d=>dayCols[d].length>1);
+  const seen = new Set();
+  m.forEach(st=>Object.values(st.days||{}).forEach(d=>d.codes.forEach(c=>seen.add(c))));
+  $("#storesInfo").innerHTML = "Read <b>"+m.size+"</b> sites from sheet <code>"+esc(t.sheet)+"</code>. Weekday columns: "+
+    (found.length ? "<code>"+found.join("</code> <code>")+"</code>" : "<b>none</b> — the Order Cut-Offs column will be used on the rule's days") +
+    (multi.length ? " (two blocks found; yes/no markers ignored, cut-off codes kept)" : "") + ". " +
+    (seen.size ? "Codes seen: <code>"+[...seen].sort().join("</code> <code>")+"</code>." : "No cut-off codes found — the Order Cut-Offs column will be used.");
+}
+function wireDrop(zone, input, handler){
+  zone.onclick = ()=>input.click();
+  zone.ondragover = e=>{ e.preventDefault(); zone.classList.add("over"); };
+  zone.ondragleave = ()=>zone.classList.remove("over");
+  zone.ondrop = e=>{ e.preventDefault(); zone.classList.remove("over"); if(e.dataTransfer.files[0]) go(e.dataTransfer.files[0]); };
+  input.onchange = ()=>{ if(input.files[0]) go(input.files[0]); input.value=""; };
+  async function go(f){
+    try{
+      await handler(f);
+      // Nothing from the previous file may leak into the new one: row expansions
+      // point at old indexes, the alert memory would suppress a genuine new breach,
+      // and the wall could be paged past the end of a shorter list.
+      expanded.clear(); ALARMED.clear(); wallPage = 0;
+      OUT_OPEN = CFG.groupOutOpen === true;
+      recompute();
+      dataToast(f.name);
+    }
+    catch(err){ alert(err.message || "Could not read that file."); }
+  }
+}
+
+/* ---------------------- export ---------------------- */
+let SAVER;
+async function getSaver(){
+  if(SAVER !== undefined) return SAVER;
+  SAVER = null;
+  try{ if(window.claude && claude.use) SAVER = await claude.use("downloads"); }catch(e){ SAVER = null; }
+  return SAVER;
+}
+async function download(blob, name){
+  const saver = await getSaver();
+  if(saver){
+    try{ await saver.save({filename:name, data:blob}); }
+    catch(err){
+      const c = err && err.code;
+      if(c==="declined" || c==="rate_limited") return;
+      alert("This view could not save the file. Open the dashboard from the .html file on your machine to export.");
+    }
+    return;
+  }
+  const a = document.createElement("a"), u = URL.createObjectURL(blob);
+  a.href=u; a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(u); a.remove(); }, 400);
+}
+function exportCsv(){
+  const L = bandLabels();
+  const head = ["Document","Wave","BU","Business Scenario","Store Grade","Whse Proc Type","Site Code","Store Name",
+    "Created","Released","Clock reference","Revised start","TAT hours","Expected packing","Remaining hours",
+    "Status","Rule matched","Store master row","Source picking status","Marked complete at"];
+  const rows = VIEW.map(r=>[
+    r.doc, r.wave, r.bu, r.scenario, r.grade, r.procType, r.shipTo, r.shipToName,
+    fmtDTFull(r.created), fmtDTFull(r.released), fmtDTFull(r.ref), fmtDTFull(r.start), r.tat,
+    fmtDTFull(r.expected), r.remaining==null?"":(r.remaining/3600000).toFixed(2),
+    L[r.bucket], r.ruleName, r.needsStore ? (r.storeFound?"found":"missing") : "n/a",
+    r.status, r.doneAt ? fmtDTFull(new Date(r.doneAt).getTime()) : ""
+  ]);
+  const csv = [head,...rows].map(r=>r.map(c=>{
+    const s = String(c==null?"":c);
+    return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  }).join(",")).join("\r\n");
+  download(new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8"}), "picking-tat-"+stamp()+".csv");
+}
+function stamp(){ const d=new Date(); return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+"-"+pad(d.getHours())+pad(d.getMinutes()); }
+
+/* ---------------------- wallboard ----------------------
+   A screen left running has no one to click it, so everything here drives itself:
+   pages of the urgent list rotate, the clock and statuses refresh, the panel drifts
+   a few pixels an hour to spread wear, and stale data announces itself. */
+let WALL_ON = false, wallPage = 0, wallTimer = null, wakeLock = null;
+let LOADED_AT = Date.now();
+let wallDimIdx = 0, TREND = [];
+const WALL_DIMS = ["scenario","bu","grade","shipTo"];
+const DIM_LABEL = {scenario:"By scenario", bu:"By BU", grade:"By store grade", procType:"By proc. type", shipTo:"By store", wave:"By wave"};
+function wcfg(){ return Object.assign({rows:9,pageSec:9,rotateDim:true,ticker:true,tickerSpeed:55,ambient:true,bu:"",scenario:"",
+  groupOut:true,statuses:["out","h1","h3","h6","safe","done"]}, CFG.wall||{}); }
+// The board can be scoped, so two screens can show two different parts of the floor.
+function wallRows(){
+  const w = wcfg(); let rows = ALL;
+  const bu = splitList(w.bu), sc = splitList(w.scenario);
+  if(bu.length) rows = rows.filter(r=>bu.some(x=>norm(x)===norm(r.bu)));
+  if(sc.length) rows = rows.filter(r=>sc.some(x=>norm(x)===norm(r.scenario)));
+  const st = Array.isArray(w.statuses) && w.statuses.length ? w.statuses : null;
+  if(st) rows = rows.filter(r=>st.includes(r.bucket));
+  return rows;
+}
+
+async function keepAwake(on){
+  try{
+    if(on && "wakeLock" in navigator){ wakeLock = await navigator.wakeLock.request("screen"); }
+    else if(wakeLock){ await wakeLock.release(); wakeLock = null; }
+  }catch(e){ wakeLock = null; }
+}
+document.addEventListener("visibilitychange", ()=>{
+  if(WALL_ON && document.visibilityState === "visible" && !wakeLock) keepAwake(true);
+});
+
+function wallEnter(){
+  WALL_ON = true;
+  const w = $("#wall");
+  w.classList.add("on","drift");
+  try{ if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen(); }catch(e){}
+  keepAwake(true);
+  wallPage = 0;
+  renderWall();
+  clearInterval(wallTimer);
+    wallTimer = setInterval(()=>{
+      wallPage++;
+      if(wcfg().rotateDim) wallDimIdx = (wallDimIdx + 1) % WALL_DIMS.length;
+      renderWall();
+    }, Math.max(3, Number(wcfg().pageSec)||9)*1000);
+}
+function wallExit(){
+  WALL_ON = false;
+  $("#wall").classList.remove("on","drift");
+  clearInterval(wallTimer); wallTimer = null;
+  keepAwake(false);
+  try{ if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen(); }catch(e){}
+}
+function fmtAge(ms){
+  const h = Math.floor(ms/3600000), m = Math.floor(ms%3600000/60000);
+  return h ? h+"h "+m+"m" : m+"m";
+}
+const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// Counts roll to their new value instead of snapping — on a wall screen the movement
+// is what catches the eye when something changes.
+function countTo(el, to){
+  const from = Number(el.dataset.v || 0);
+  if(from === to){ el.textContent = to; return; }
+  el.dataset.v = to;
+  if(REDUCED){ el.textContent = to; return; }
+  const t0 = performance.now(), dur = 650;
+  (function step(t){
+    const p = Math.min(1, (t - t0)/dur);
+    const e = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(from + (to - from)*e);
+    if(p < 1) requestAnimationFrame(step); else el.textContent = to;
+  })(t0);
+}
+
+// Stacked ring of the open workload, newest state animated into place.
+function renderRing(c){
+  const segs = [
+    {k:"out",  col:"#FF6B5E", lab:bandLabels().out},
+    {k:"h1",   col:"#FF9F45", lab:bandLabels().h1},
+    {k:"h3",   col:"#F2C14E", lab:bandLabels().h3},
+    {k:"h6",   col:"#4ED9A0", lab:bandLabels().h6},
+    {k:"safe", col:"#7E93A3", lab:bandLabels().safe}
+  ];
+  const total = segs.reduce((a,s)=>a + (c[s.k]||0), 0);
+  const R = 54, CIRC = 2*Math.PI*R;
+  let off = 0;
+  const arcs = segs.map(s=>{
+    const n = c[s.k]||0;
+    if(!n || !total) return "";
+    const len = n/total*CIRC;
+    const a = "<circle class='seg' cx='70' cy='70' r='"+R+"' fill='none' stroke='"+s.col+"' stroke-width='15' "+
+      "stroke-dasharray='"+(len-2.5>0?len-2.5:len)+" "+(CIRC-(len-2.5>0?len-2.5:len))+"' stroke-dashoffset='"+(-off)+"' "+
+      "stroke-linecap='butt' transform='rotate(-90 70 70)'/>";
+    off += len;
+    return a;
+  }).join("");
+  $("#wRing").innerHTML =
+    "<svg viewBox='0 0 140 140' role='img' aria-label='Open documents by status'>"+
+      "<circle class='track' cx='70' cy='70' r='"+R+"' fill='none' stroke-width='15'/>"+
+      arcs+
+      "<text class='ctr-n' x='70' y='64'>"+total+"</text>"+
+      "<text class='ctr-l' x='70' y='86'>OPEN</text>"+
+    "</svg>"+
+    "<div class='wleg'>"+segs.map(s=>
+      "<div class='wlegrow"+((c[s.k]||0)?"":" zero")+"' style='--lc:"+s.col+"'>"+
+      "<i></i><span class='t'>"+esc(s.lab)+"</span><span class='n'>"+(c[s.k]||0)+"</span></div>").join("")+
+    "</div>";
+}
+
+// Live countdown to the next document due — the most actionable number on a picking
+// floor, and it ticks every second rather than only on the 30s refresh.
+let NEXT_DUE = null;
+function renderNextBreach(rows){
+  const open = rows.filter(r=>!r.done && r.expected!=null);
+  const late = open.filter(r=>r.remaining < 0).length;
+  if(late){ NEXT_DUE = null; paintNext(late+" already out", "late"); return; }
+  const next = open.filter(r=>r.remaining >= 0).sort((a,b)=>a.remaining-b.remaining)[0];
+  if(!next){ NEXT_DUE = null; paintNext("nothing due", "none"); return; }
+  NEXT_DUE = next.expected;
+  tickNextBreach();
+}
+function tickNextBreach(){
+  if(NEXT_DUE == null) return;
+  const ms = NEXT_DUE - Date.now();
+  if(ms < 0){ paintNext("0:00:00", "late"); return; }
+  const h = Math.floor(ms/3600000), m = Math.floor(ms%3600000/60000), sec = Math.floor(ms%60000/1000);
+  paintNext(h+":"+pad(m)+":"+pad(sec), ms < 3600000 ? "soon" : "");
+}
+function paintNext(text, state){
+  const box = $("#wNext"); if(!box) return;
+  $("#wNextV").textContent = text;
+  box.className = "wall-next" + (state ? " "+state : "");
+}
+
+// A rolling picture of the session, so the board shows direction and not only now.
+function sampleTrend(rows, c){
+  const now = Date.now();
+  const last = TREND[TREND.length-1];
+  if(last && now - last.t < 25000) return;
+  TREND.push({t:now, open:rows.filter(r=>!r.done).length, out:c.out||0});
+  const cutoff = now - 3*3600000;
+  while(TREND.length > 1 && TREND[0].t < cutoff) TREND.shift();
+  if(TREND.length > 400) TREND.splice(0, TREND.length-400);
+}
+function renderTrend(){
+  const host = $("#wTrend"); if(!host) return;
+  if(TREND.length < 2){
+    host.innerHTML = "<div class='lab'><b>SESSION TREND</b><span>collecting&hellip;</span></div>"+
+      "<svg viewBox='0 0 300 40' preserveAspectRatio='none'></svg>";
+    return;
+  }
+  const VW = 300, VH = 40;
+  const t0 = TREND[0].t, t1 = TREND[TREND.length-1].t;
+  const span = Math.max(1, t1 - t0);
+  const max = Math.max(1, ...TREND.map(d=>d.open));
+  const px = d => (d.t - t0)/span*VW;
+  const py = v => VH - (v/max)*(VH-4) - 2;
+  const pts = TREND.map(d=>px(d).toFixed(1)+","+py(d.open).toFixed(1)).join(" ");
+  const outPts = TREND.map(d=>px(d).toFixed(1)+","+py(d.out).toFixed(1)).join(" ");
+  const area = "0,"+VH+" "+pts+" "+VW+","+VH;
+  const mins = Math.round(span/60000);
+  host.innerHTML =
+    "<div class='lab'><b>SESSION TREND</b><span>open "+TREND[TREND.length-1].open+
+      " &middot; peak "+max+" &middot; "+(mins<1?"under a minute":mins+" min")+"</span></div>"+
+    "<svg viewBox='0 0 "+VW+" "+VH+"' preserveAspectRatio='none' role='img' aria-label='Open documents across this session'>"+
+      "<defs><linearGradient id='tg' x1='0' y1='0' x2='0' y2='1'>"+
+        "<stop offset='0%' stop-color='#4ED9A0' stop-opacity='.4'/>"+
+        "<stop offset='100%' stop-color='#4ED9A0' stop-opacity='0'/></linearGradient></defs>"+
+      "<polygon points='"+area+"' fill='url(#tg)'/>"+
+      "<polyline points='"+pts+"' fill='none' stroke='#4ED9A0' stroke-width='1.6' vector-effect='non-scaling-stroke'/>"+
+      (TREND.some(d=>d.out>0) ? "<polyline points='"+outPts+"' fill='none' stroke='#FF6B5E' stroke-width='1.6' vector-effect='non-scaling-stroke'/>" : "")+
+    "</svg>";
+}
+
+function renderWall(){
+  if(!WALL_ON) return;
+  const L = bandLabels();
+  const W = wallRows();
+  const c = {}; statusList().forEach(s=>c[s.k]=0);
+  W.forEach(r=>c[r.bucket]++);
+
+  $("#wall").classList.toggle("alarmstate", c.out > 0);
+
+  // tiles — rebuilt only when the labels change, so the numbers can count rather than jump
+  const tints = {out:"var(--w-out)",h1:"var(--w-crit)",h3:"var(--w-warn)",h6:"var(--w-ok)",safe:"var(--w-calm)",done:"var(--w-done)"};
+  const sig = statusList().map(s=>s.label).join("|");
+  const tileHost = $("#wTiles");
+  if(tileHost.dataset.sig !== sig){
+    tileHost.dataset.sig = sig;
+    tileHost.innerHTML = statusList().map(s=>
+      "<div class='wtile' data-k='"+s.k+"' style='--c:"+tints[s.k]+"'>"+
+      "<div class='k'>"+esc(s.label)+"</div>"+
+      "<div class='v' data-v='0' style='color:"+tints[s.k]+"'>0</div></div>").join("");
+  }
+  statusList().forEach(s=>{
+    const tile = tileHost.querySelector("[data-k='"+s.k+"']");
+    if(!tile) return;
+    tile.classList.toggle("hot", s.k==="out" && c.out>0);
+    countTo(tile.querySelector(".v"), c[s.k]);
+  });
+
+  renderRing(c);
+
+  // Urgent list, paged. Same order as the working list: what breaches next leads,
+  // what has already breached is reported as one band above rather than eating rows.
+  const open = W.filter(r=>!r.done && r.remaining!=null).sort(byUrgency);
+  const breached = open.filter(r=>r.bucket === "out");
+  const bandOn = wcfg().groupOut !== false && breached.length > 0;
+  const urgent = bandOn ? open.filter(r=>r.bucket !== "out") : open;
+  const band = bandOn ? outBandHtml(breached) : "";
+  const host = $("#wListHost");
+  if(!urgent.length){
+    wallPage = 0;
+    $("#wPage").textContent = bandOn ? breached.length+" out of TAT" : "";
+    host.innerHTML = band + "<div class='wall-calm'><div class='big'>"+
+      (bandOn ? "Nothing else is close" : "All documents within TAT")+"</div>"+
+      "<div class='sm'>"+c.safe+" open with more than "+L.safe.replace(/^Over /,"")+" to run &middot; "+c.done+" completed</div></div>";
+  }else{
+    const WR = Math.max(3, Math.min(20, Number(wcfg().rows)||9));
+    const pages = Math.max(1, Math.ceil(urgent.length/WR));
+    if(wallPage >= pages) wallPage = 0;
+    const slice = urgent.slice(wallPage*WR, wallPage*WR+WR);
+    $("#wPage").textContent = (pages>1 ? "page "+(wallPage+1)+" of "+pages+" · " : "")+
+      (bandOn ? urgent.length+" still inside TAT · "+breached.length+" out"
+              : urgent.length+" documents");
+    host.innerHTML = band + "<div class='wlisttbl'><table class='wt'><colgroup><col style='width:.28em'><col style='width:21%'><col style='width:33%'><col style='width:13%'><col style='width:16%'><col style='width:17%'></colgroup>"+
+      "<thead><tr><th class='stat'></th><th>Document</th><th>Store</th><th>Scenario</th><th>Pack by</th><th class='r'>Remaining</th></tr></thead><tbody>"+
+      slice.map((r,i)=>{ const u = tatUsed(r);
+        const st = "style='--i:"+i+(u!=null?";--fp:"+u.toFixed(1)+"%":"")+"'";
+        return "<tr class='w-"+r.bucket+(u!=null?" fill":"")+"' "+st+"><td class='stat'></td>"+
+        "<td class='d'>"+esc(r.doc)+"</td>"+
+        "<td class='s'>"+esc(r.shipTo)+(r.shipToName?" &middot; "+esc(r.shipToName):"")+"</td>"+
+        "<td class='s'>"+esc(r.scenario||"—")+"</td>"+
+        "<td class='s'>"+fmtDT(r.expected)+"</td>"+
+        "<td class='r'>"+fmtDur(r.remaining)+"</td></tr>"; }).join("")+
+      "</tbody></table></div>";
+  }
+
+  // breakdown of open documents
+  const dim = wcfg().rotateDim ? WALL_DIMS[wallDimIdx % WALL_DIMS.length]
+                                : ($("#mxDim").value || "scenario");
+  $("#wBreakTitle").textContent = DIM_LABEL[dim] || "By scenario";
+  const groups = new Map();
+  W.filter(r=>!r.done).forEach(r=>{
+    const k = dim==="shipTo" ? ((r.shipTo+" "+(r.shipToName||"")).trim()||"(blank)") : (r[dim]||"(blank)");
+    if(!groups.has(k)) groups.set(k,{out:0,h1:0,h3:0,h6:0,safe:0,n:0});
+    const g = groups.get(k); g[r.bucket]=(g[r.bucket]||0)+1; g.n++;
+  });
+  const sev = g => g.out*1e6 + g.h1*1e4 + g.h3*1e2 + g.h6;
+  const list = [...groups.entries()].sort((a,b)=>sev(b[1])-sev(a[1])||b[1].n-a[1].n).slice(0,6);
+  const max = Math.max(1, ...list.map(([,g])=>g.n));
+  $("#wBreak").innerHTML = list.length ? list.map(([k,g])=>
+    "<div class='wbrow'><div class='n'>"+esc(k)+"</div><div class='c'>"+g.n+"</div>"+
+    "<div class='wbar'>"+["out","h1","h3","h6","safe"].map(b=>
+      g[b] ? "<span style='width:"+(g[b]/max*100)+"%;background:"+tints[b]+"'></span>" : "").join("")+"</div></div>").join("")
+    : "<div class='wbrow'><div class='n' style='color:var(--w-dim)'>No open documents.</div></div>";
+
+  // histogram
+  const rows = W.filter(r=>!r.done && r.remaining!=null);
+  const hc = HIST.map(b=>rows.filter(r=>{ const h=r.remaining/3600000; return h>=b.lo && h<b.hi; }).length);
+  const hmax = Math.max(1,...hc);
+  const hcol = {out:"var(--w-out)",crit:"var(--w-crit)",warn:"var(--w-warn)",ok:"var(--w-ok)",calm:"var(--w-calm)"};
+  $("#wHist").innerHTML = hc.map((n,i)=>
+    "<div class='whcol'><div class='n'>"+(n||"")+"</div><div class='b' style='height:"+(n?Math.max(4,n/hmax*100):2)+"%;background:"+
+    hcol[HIST[i].c]+";opacity:"+(n?1:.2)+"'></div></div>").join("");
+  $("#wHistLab").innerHTML = HIST.map(b=>"<div>"+b.lab+"</div>").join("");
+
+  // ticker — only appears when something is actually breached
+  const outs = W.filter(r=>r.bucket === "out")
+    .sort((a,b)=>a.remaining-b.remaining)
+    .map(r=>"<span><b>"+esc(r.doc)+"</b> &nbsp;"+esc(r.shipTo)+(r.shipToName?" "+esc(r.shipToName):"")+
+            " &nbsp;&middot;&nbsp; "+fmtDur(r.remaining).replace("−","")+" over</span>");
+  const tick = $("#wTicker");
+  tick.classList.toggle("on", outs.length > 0 && wcfg().ticker !== false);
+  if(outs.length){
+    const run = $("#wTickerRun");
+    const html = outs.join("");
+    if(run.dataset.sig !== html){
+      run.dataset.sig = html;
+      run.innerHTML = html + html;
+      paceTicker(run);
+    }
+  }
+
+  // footer — data freshness matters most on a screen nobody is watching
+  const age = Date.now() - LOADED_AT;
+  const stale = age > 12*3600000 ? "vstale" : age > 4*3600000 ? "stale" : "";
+  $("#wData").className = stale;
+  $("#wData").textContent = (SRC.sample ? "Sample data" : "Data loaded "+fmtAge(age)+" ago")+
+    (stale ? " — re-upload the extract" : "");
+  $("#wUpdated").textContent = W.length+(W.length!==ALL.length?" of "+ALL.length:"")+" documents · recalculated "+new Date().toLocaleTimeString();
+
+  // ambient state + trend
+  const wl = $("#wall");
+  wl.classList.toggle("noamb", wcfg().ambient === false);
+  wl.classList.toggle("st-out", c.out > 0);
+  wl.classList.toggle("st-warn", c.out === 0 && (c.h1 + c.h3) > 0);
+  sampleTrend(W, c);
+  renderTrend();
+  renderNextBreach(W);
+}
+
+// The breached backlog, stated as a shape rather than a list: a wall screen cannot
+// be acted on document by document, and the ticker along the foot still names them.
+function outBandHtml(rows){
+  const worst = rows.reduce((m,r)=>Math.min(m, r.remaining), 0);
+  const by = new Map();
+  rows.forEach(r=>{ const k = r.bu || "—"; by.set(k, (by.get(k)||0)+1); });
+  const top = [...by.entries()].sort((a,b)=>b[1]-a[1]).slice(0,4);
+  return "<div class='wout'><div class='n'>"+rows.length+"</div>"+
+    "<div><div class='lb'>Out of TAT</div>"+
+    "<div class='sub'>worst "+fmtDur(worst).replace("−","")+" over &middot; escalate, do not queue</div></div>"+
+    "<div class='grp'>"+top.map(([k,v])=>
+      "<div><div class='gk'>"+esc(k)+"</div><div class='gn'>"+v+"</div></div>").join("")+"</div></div>";
+}
+
+// Reading speed, not run time, is what matters on a strip nobody can pause: hold a
+// constant pixels-per-second whatever the backlog is, so a long list simply takes
+// longer to come round rather than flying past.
+function paceTicker(run){
+  const px = Math.max(1, Number(wcfg().tickerSpeed) || 55);
+  // The animation travels one full width of .run, and the element carries the text
+  // twice over plus a screen's worth of lead-in padding.
+  const dist = run.scrollWidth || run.offsetWidth || 2000;
+  run.style.setProperty("--wdur", Math.max(12, Math.round(dist / px)) + "s");
+}
+
+/* ---------------------- Teams ---------------------- */
+function buildTeamsMessage(){
+  const L = bandLabels();
+  const c = {}; statusList().forEach(s=>c[s.k]=0);
+  ALL.forEach(r=>c[r.bucket]++);
+  const open = ALL.filter(r=>!r.done).length;
+  const d = new Date();
+  const when = DAYS[d.getDay()]+" "+pad(d.getDate())+"/"+pad(d.getMonth()+1)+"/"+d.getFullYear()+" "+pad(d.getHours())+":"+pad(d.getMinutes());
+
+  const lines = [];
+  lines.push("Picking TAT status — "+when);
+  lines.push("");
+  lines.push("Open documents: "+open+"  (of "+ALL.length+" on the board)");
+  lines.push("");
+  ["out","h1","h3","h6","safe","done"].forEach(k=> lines.push("  "+L[k].padEnd(14," ")+" "+c[k]));
+
+  const listOf = k => ALL.filter(r=>r.bucket===k)
+    .sort((a,b)=>(a.remaining??0)-(b.remaining??0))
+    .map(r=>r.doc+" ("+(r.shipTo||"?")+(r.remaining!=null?", "+fmtDur(r.remaining):"")+")");
+
+  const outs = listOf("out"), h1s = listOf("h1");
+  if(outs.length){
+    lines.push("", "OUT OF TAT — "+outs.length+":");
+    outs.slice(0,25).forEach(x=>lines.push("  • "+x));
+    if(outs.length>25) lines.push("  … and "+(outs.length-25)+" more");
+  }
+  if(h1s.length){
+    lines.push("", L.h1.toUpperCase()+" — "+h1s.length+":");
+    h1s.slice(0,25).forEach(x=>lines.push("  • "+x));
+    if(h1s.length>25) lines.push("  … and "+(h1s.length-25)+" more");
+  }
+  if(!outs.length && !h1s.length) lines.push("", "Nothing out of TAT or in the first warning band.");
+  lines.push("", "Picking TAT Control — developed by Dineth Chandrasiri");
+  return lines.join("\n");
+}
+function teamsPayload(text, fmt){
+  if(fmt === "plain") return JSON.stringify({text});
+  if(fmt === "legacy") return JSON.stringify({
+    "@type":"MessageCard", "@context":"https://schema.org/extensions",
+    summary:"Picking TAT status", themeColor:"A61E15",
+    title:"Picking TAT status", text: text.replace(/\n/g,"\n\n")
+  });
+  return JSON.stringify({
+    type:"message",
+    attachments:[{
+      contentType:"application/vnd.microsoft.card.adaptive",
+      content:{
+        $schema:"http://adaptive-cards.io/schemas/adaptive-card.json",
+        type:"AdaptiveCard", version:"1.4",
+        body:[
+          {type:"TextBlock", text:"Picking TAT status", weight:"Bolder", size:"Medium", wrap:true},
+          {type:"TextBlock", text:text, wrap:true, fontType:"Monospace", spacing:"Small"}
+        ]
+      }
+    }]
+  });
+}
+function teamsResult(msg, ok){
+  const r = $("#teamsResult");
+  r.className = "result "+(ok?"ok":"bad");
+  r.textContent = msg;
+}
+async function sendTeams(){
+  const url = $("#teamsHook").value.trim();
+  const text = $("#teamsMsg").value;
+  if(!url){ teamsResult("Add the channel's Incoming Webhook URL first.", false); return; }
+  if(!/^https:\/\//i.test(url)){ teamsResult("The webhook URL must start with https://", false); return; }
+  if(!text.trim()){ teamsResult("The message is empty.", false); return; }
+  try{ localStorage.setItem("pickTat.teamsHook", url); }catch(e){}
+  const btn = $("#btnSendTeams");
+  const body = teamsPayload(text, $("#teamsFmt").value);
+  btn.disabled = true; btn.textContent = "Sending…";
+
+  // First try a normal request: it sends a real application/json content type and
+  // lets us read the status, so a success is genuinely confirmed. If the endpoint
+  // refuses the browser's origin we fall back to a fire-and-forget send — that one
+  // cannot carry a JSON content type, which some webhooks reject, so it is reported
+  // as dispatched rather than delivered.
+  try{
+    const res = await fetch(url, { method:"POST",
+      headers:{"Content-Type":"application/json"}, body });
+    if(res.ok) teamsResult("Delivered — the webhook accepted it (HTTP "+res.status+") at "+new Date().toLocaleTimeString()+".", true);
+    else teamsResult("The webhook rejected it: HTTP "+res.status+" "+res.statusText+
+      ". Check the payload format matches the flow (Adaptive Card for Workflows, MessageCard for a classic connector).", false);
+    btn.disabled = false; btn.textContent = "Send to Teams";
+    return;
+  }catch(err){ /* almost always CORS — fall through */ }
+
+  try{
+    await fetch(url, { method:"POST", mode:"no-cors", body });
+    teamsResult("Dispatched at "+new Date().toLocaleTimeString()+", but not confirmed. The channel blocked this page from reading the reply, and this fallback cannot send a JSON content type — some webhooks reject that. Check the Teams channel; if nothing arrived, use Copy message.", true);
+  }catch(err){
+    teamsResult("Could not reach the webhook: "+(err && err.message ? err.message : "network error")+
+      ". Use Copy message and paste into Teams.", false);
+  }
+  btn.disabled = false; btn.textContent = "Send to Teams";
+}
+
+/* ---------------------- wiring ---------------------- */
+function openDrawer(k){ $("#scrim"+k).classList.add("on"); $("#drawer"+k).classList.add("on"); }
+function closeDrawer(k){ $("#scrim"+k).classList.remove("on"); $("#drawer"+k).classList.remove("on"); }
+document.querySelectorAll("[data-close]").forEach(b=> b.onclick = ()=>closeDrawer(b.dataset.close));
+$("#scrimU").onclick = ()=>closeDrawer("U");
+$("#scrimS").onclick = ()=>closeDrawer("S");
+$("#scrimL").onclick = ()=>closeDrawer("L");
+$("#scrimT").onclick = ()=>closeDrawer("T");
+document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ closeDrawer("U"); closeDrawer("L"); closeDrawer("T"); closeDrawer("S"); }});
+
+$("#btnTeams").onclick = ()=>{
+  $("#teamsMsg").value = buildTeamsMessage();
+  $("#teamsResult").className = "result";
+  try{ const h = localStorage.getItem("pickTat.teamsHook"); if(h) $("#teamsHook").value = h; }catch(e){}
+  openDrawer("T");
+};
+$("#btnRefreshMsg").onclick = ()=>{ $("#teamsMsg").value = buildTeamsMessage(); };
+$("#btnSendTeams").onclick = sendTeams;
+$("#btnCopyMsg").onclick = async ()=>{
+  const t = $("#teamsMsg").value;
+  try{
+    if(navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(t);
+    else { const a=$("#teamsMsg"); a.select(); document.execCommand("copy"); a.setSelectionRange(0,0); }
+    teamsResult("Copied. Paste it into the Teams channel.", true);
+  }catch(err){
+    teamsResult("Could not reach the clipboard — select the message text and copy it by hand.", false);
+  }
+};
+
+$("#btnUpload").onclick = ()=>openDrawer("U");
+$("#btnUpload2").onclick = ()=>openDrawer("U");
+$("#btnLogic").onclick = ()=>{ renderRules(); renderCodes(); syncLogicInputs(); openDrawer("L"); };
+$("#btnSettings").onclick = ()=>{ syncSettingsInputs(); openDrawer("S"); };
+$("#btnExport").onclick = exportCsv;
+$("#btnTheme").onclick = ()=>{
+  const cur = document.documentElement.getAttribute("data-theme");
+  const sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const next = cur ? (cur==="dark"?"light":"dark") : (sysDark?"light":"dark");
+  document.documentElement.setAttribute("data-theme", next);
+  try{ localStorage.setItem("pickTat.theme", next); }catch(e){}
+  $("#optTheme").value = next;
+};
+$("#optTheme").onchange = e=>{
+  const v = e.target.value;
+  if(v) document.documentElement.setAttribute("data-theme", v);
+  else document.documentElement.removeAttribute("data-theme");
+  try{ v ? localStorage.setItem("pickTat.theme", v) : localStorage.removeItem("pickTat.theme"); }catch(err){}
+};
+try{ const t = localStorage.getItem("pickTat.theme"); if(t) document.documentElement.setAttribute("data-theme", t); }catch(e){}
+
+function paintAlarmBtn(){
+  const b = $("#btnAlarm");
+  b.classList.toggle("alarm-on", ALARM_ON);
+  $("#alarmLbl").textContent = ALARM_ON ? "Alert on" : "Alert off";
+  b.title = ALARM_ON ? "A tone sounds when a document goes out of TAT — click to switch off"
+                     : "Switch on a tone for documents going out of TAT";
+}
+$("#btnAlarm").onclick = ()=>{
+  ALARM_ON = !ALARM_ON;
+  try{ localStorage.setItem("pickTat.alarm", ALARM_ON?"1":"0"); }catch(e){}
+  paintAlarmBtn();
+  $("#setAlarmOn").setAttribute("aria-checked", ALARM_ON ? "true" : "false");
+  if(ALARM_ON){ ALARMED.clear(); playTone(scfg().warn, 1); recompute(); }   // the click is the gesture browsers need
+};
+paintAlarmBtn();
+$("#setAlarmOn").setAttribute("aria-checked", ALARM_ON ? "true" : "false");
+OUT_OPEN = CFG.groupOutOpen === true;
+
+["fSearch","fScenario","fBu","fGrade","fProc","fDone"].forEach(id=>$("#"+id).addEventListener("input", render));
+$("#fStatus").addEventListener("change", e=>{
+  statusFilter = e.target.value || null;
+  if(statusFilter === "done") $("#fDone").value = "only";
+  else if($("#fDone").value === "only") $("#fDone").value = "hide";
+  render();
+});
+$("#mxDim").addEventListener("change", renderMatrix);
+$("#btnClear").onclick = ()=>{
+  ["fSearch","fScenario","fBu","fGrade","fProc"].forEach(id=>$("#"+id).value="");
+  $("#fDone").value="hide"; statusFilter=null; render();
+};
+
+$("#optBandMode").onchange = e=>{
+  CFG.bandMode = e.target.value;
+  CFG.bands = CFG.bandMode==="pct" ? {e1:10,e2:25,e3:50} : {e1:1,e2:3,e3:6};
+  saveCfg(); syncLogicInputs(); recompute();
+};
+["E1","E2","E3"].forEach((n,i)=>{
+  $("#opt"+n).oninput = e=>{ CFG.bands["e"+(i+1)] = Number(e.target.value)||0; saveCfg(); renderBandPreview(); recompute(); };
+});
+$("#optAlarmWhen").onchange = e=>{ CFG.alarmWhen=e.target.value; ALARMED.clear(); saveCfg(); recompute(); };
+$("#optAlarmRepeat").onchange = e=>{ CFG.alarmRepeat=Number(e.target.value)||0; saveCfg(); };
+$("#optRowFill").onclick = ()=>{ CFG.rowFill = !CFG.rowFill;
+  $("#optRowFill").setAttribute("aria-checked", CFG.rowFill?"true":"false"); saveCfg(); recompute(); };
+$("#optGroupOut").onclick = ()=>{ CFG.groupOut = CFG.groupOut === false;
+  $("#optGroupOut").setAttribute("aria-checked", CFG.groupOut?"true":"false"); saveCfg(); render(); };
+
+/* --- settings drawer --- */
+const sset = () => { CFG.sound = scfg(); return CFG.sound; };
+$("#optToneOut").onchange  = e=>{ sset().out  = e.target.value; saveCfg(); playTone(e.target.value, 1); };
+$("#optToneWarn").onchange = e=>{ sset().warn = e.target.value; saveCfg(); playTone(e.target.value, 1); };
+$("#btnTestOut").onclick   = ()=>playTone(scfg().out, 2);
+$("#btnTestWarn").onclick  = ()=>playTone(scfg().warn, 1);
+$("#optVol").oninput = e=>{
+  const v = Math.max(0, Math.min(100, Number(e.target.value)||0));
+  sset().vol = v/100; saveCfg();
+  $("#volVal").textContent = v + "%";
+};
+// Let go of the slider and you hear where you left it, rather than guessing.
+$("#optVol").onchange = ()=>{ if(!scfg().mute) playTone(scfg().warn, 1); };
+$("#optMute").onclick = ()=>{
+  const c = sset(); c.mute = !c.mute; saveCfg();
+  $("#optMute").setAttribute("aria-checked", c.mute?"true":"false");
+  if(!c.mute) playTone(c.warn, 1);
+};
+$("#setAlarmOn").onclick = ()=>$("#btnAlarm").click();
+(function wireWallOpts(){
+  const w = ()=>{ CFG.wall = wcfg(); return CFG.wall; };
+  const numOpt = (id,key,min,max)=>{ $(id).oninput = e=>{
+    const v = Number(e.target.value); if(!Number.isFinite(v) || e.target.value==="") return;
+    w()[key] = Math.max(min, Math.min(max, v)); saveCfg();
+    if(WALL_ON){ wallPage = 0; clearInterval(wallTimer);
+      wallTimer = setInterval(()=>{ wallPage++;
+        if(wcfg().rotateDim) wallDimIdx = (wallDimIdx+1) % WALL_DIMS.length;
+        renderWall(); }, Math.max(3, Number(wcfg().pageSec)||9)*1000);
+      renderWall(); } }; };
+  numOpt("#wOptRows","rows",3,20);
+  numOpt("#wOptSec","pageSec",3,120);
+  $("#wOptBu").oninput = e=>{ w().bu = e.target.value; saveCfg(); renderWall(); };
+  $("#wOptSc").oninput = e=>{ w().scenario = e.target.value; saveCfg(); renderWall(); };
+  const swOpt = (id,key)=>{ $(id).onclick = ()=>{
+    const c = w(); c[key] = !c[key];
+    $(id).setAttribute("aria-checked", c[key]?"true":"false"); saveCfg(); renderWall(); }; };
+  swOpt("#wOptRotate","rotateDim"); swOpt("#wOptTicker","ticker"); swOpt("#wOptAmb","ambient");
+  $("#wOptTickSpd").onchange = e=>{
+    w().tickerSpeed = Number(e.target.value) || 55; saveCfg();
+    const run = $("#wTickerRun"); if(run) paceTicker(run);
+  };
+  $("#wOptGroupOut").onclick = ()=>{
+    const c = w(); c.groupOut = c.groupOut === false;
+    $("#wOptGroupOut").setAttribute("aria-checked", c.groupOut?"true":"false");
+    wallPage = 0; saveCfg(); renderWall();
+  };
+})();
+$("#optDoneRule").onchange = e=>{ CFG.doneRule=e.target.value; saveCfg(); recompute(); };
+$("#optDoneStatus").oninput = e=>{ CFG.doneStatuses=e.target.value; saveCfg(); recompute(); };
+$("#optDateFmt").onchange = e=>{ CFG.dateFmt=e.target.value; saveCfg(); recompute(); };
+$("#optRefSrc").onchange = e=>{ CFG.refSrc=e.target.value; saveCfg(); recompute(); };
+$("#btnClearDone").onclick = ()=>{
+  if(!DONE.size) return;
+  if(!confirm("Clear all "+DONE.size+" documents marked complete on this browser?")) return;
+  DONE.clear(); saveDone(); recompute();
+};
+
+$("#btnAddRule").onclick = ()=>{
+  CFG.rules.push({id:rid(), on:true, name:"New rule", m:{procType:"",scenario:"",grade:"",bu:""},
+    tat:24, start:"cutoff", times:"09:00", days:ALL_DAYS(), grace:30, storeSrc:"codes"});
+  commit();
+};
+$("#btnAddCode").onclick = ()=>{ CFG.codes.push({code:"", time:"09:00"}); saveCfg(); renderCodes(); };
+$("#btnRulesReset").onclick = ()=>{
+  if(!confirm("Reset every rule, band, code and setting back to the delivered defaults?")) return;
+  CFG = defaultConfig(); OUT_OPEN = false; saveCfg();
+  renderRules(); renderCodes(); syncLogicInputs(); syncSettingsInputs(); recompute();
+};
+$("#btnRulesExport").onclick = ()=> download(new Blob([JSON.stringify(CFG,null,2)],{type:"application/json"}), "picking-tat-logic.json");
+$("#btnRulesImport").onclick = ()=>$("#fileRules").click();
+$("#fileRules").onchange = e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const fr = new FileReader();
+  fr.onload = ev=>{
+    try{
+      const p = JSON.parse(ev.target.result);
+      if(!p.rules || !Array.isArray(p.rules)) throw 0;
+      CFG = migrate(Object.assign(defaultConfig(), p));
+      saveCfg(); renderRules(); renderCodes(); syncLogicInputs(); syncSettingsInputs(); recompute();
+    }catch(err){ alert("That file is not a TAT logic export."); }
+  };
+  fr.readAsText(f); e.target.value="";
+};
+
+wireDrop($("#dzOrders"), $("#fileOrders"), loadOrdersFile);
+wireDrop($("#dzStores"), $("#fileStores"), loadStoresFile);
+
+$("#btnWall").onclick = wallEnter;
+$("#btnWallExit").onclick = wallExit;
+document.addEventListener("keydown", e=>{
+  if(e.key === "Escape" && WALL_ON) wallExit();
+  if((e.key === "d" || e.key === "D") && !WALL_ON && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) wallEnter();
+});
+// the exit button stays out of the way until someone moves the mouse
+let exitTimer = null;
+document.addEventListener("mousemove", ()=>{
+  if(!WALL_ON) return;
+  const b = $("#btnWallExit");
+  b.classList.add("show");
+  clearTimeout(exitTimer);
+  exitTimer = setTimeout(()=>b.classList.remove("show"), 2600);
+});
+document.addEventListener("fullscreenchange", ()=>{ if(!document.fullscreenElement && WALL_ON) wallExit(); });
+
+function tickClock(){
+  const d = new Date();
+  $("#clock").textContent = pad(d.getHours())+":"+pad(d.getMinutes())+":"+pad(d.getSeconds());
+  $("#clockDate").textContent = DAYS[d.getDay()]+" "+pad(d.getDate())+"/"+pad(d.getMonth()+1);
+  if(WALL_ON){
+    tickNextBreach();
+    $("#wClock").textContent = pad(d.getHours())+":"+pad(d.getMinutes())+":"+pad(d.getSeconds());
+    $("#wDate").textContent = DAYS[d.getDay()]+" "+pad(d.getDate())+" "+
+      ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]+" "+d.getFullYear();
+  }
+}
+tickClock(); setInterval(tickClock, 1000);
+setInterval(recompute, 30000);
+
+loadSample();
+recompute();
+</script>
