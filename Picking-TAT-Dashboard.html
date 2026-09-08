@@ -554,6 +554,21 @@ table.sttab input.day{text-align:center;font-family:"IBM Plex Mono",monospace;fo
 table.sttab input.day.set{color:var(--ok);font-weight:600;background:var(--ok-bg)}
 table.sttab tr.nodays td.site input{color:var(--warn)}
 
+/* ---- the sites a store-calendar rule actually governs, inside the rule ---- */
+.rulestores{border-top:1px solid var(--line-soft);background:var(--surface)}
+.rs-h{display:flex;align-items:center;gap:9px;padding:7px 9px;cursor:pointer;user-select:none}
+.rs-h:hover{background:var(--surface-3)}
+.rs-h .cv{width:10px;text-align:center;font-size:8px;color:var(--text-3);transition:transform .15s}
+.rs-h.open .cv{transform:rotate(90deg)}
+.rs-h .t{font-family:Archivo,sans-serif;font-size:9px;font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--text-3)}
+.rs-h .c{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;color:var(--text-2)}
+.rs-h .warn{color:var(--warn);font-size:10.5px}
+.rs-h .go{margin-left:auto;font-size:10.5px;color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+.rs-b{padding:0 9px 10px}
+.rs-b .storetools{margin:8px 0}
+.rs-b .stwrap{max-height:290px}
+
 /* ---- out-of-TAT group at the foot of the working list ----
    Breached work is a backlog, not a queue: it reports as one block and only
    opens to document level when someone asks it to. ---- */
@@ -2110,10 +2125,28 @@ function stDayCell(st, d){
     i.classList.toggle("set", codes.length > 0);
     i.closest("tr").className = Object.keys(st.days).length ? "" : "nodays";
     saveStores(); recompute();
+    syncRuleStoreCounts();
   };
   td.appendChild(i); return td;
 }
 function openStores(){ renderStores(); openDrawer("V"); }
+// The rule cards carry their own site counts, so a change made in the store master
+// has to reach them without rebuilding the rule the user is typing into.
+function syncRuleStoreCounts(){
+  if(!$("#drawerL").classList.contains("on")) return;
+  const boxes = document.querySelectorAll("#rules .rule");
+  CFG.rules.forEach((rl,i)=>{
+    if(rl.start !== "store") return;
+    const head = boxes[i] && boxes[i].querySelector(".rs-h");
+    if(!head) return;
+    const all = storesForRule(rl);
+    const gaps = all.filter(st=>!Object.keys(st.days||{}).length).length;
+    head.querySelector(".c").textContent = all.length;
+    const w = head.querySelector(".warn");
+    if(gaps && w) w.textContent = gaps+" with no cut-off day";
+    else if(w) w.remove();
+  });
+}
 
 /* ---------------------- logic drawer ---------------------- */
 function renderRules(){
@@ -2179,8 +2212,104 @@ function renderRules(){
       });
       df.appendChild(dd); b.appendChild(df);
     }
-    box.appendChild(b); host.appendChild(box);
+    box.appendChild(b);
+    // A rule that reads the store calendar is only as good as the sites under it, so
+    // the sites live here too rather than one drawer away.
+    if(rl.start === "store") box.appendChild(ruleStores(rl));
+    host.appendChild(box);
   });
+}
+// Which sites a store-calendar rule governs: the master rows whose grade, BU and
+// scenario the rule would match. Editable in place — the same cells as the store
+// master, writing to the same map.
+function storesForRule(rl){
+  return [...STORES.values()]
+    .filter(st=>matchOne(st.grade, rl.m.grade) && matchOne(st.bu, rl.m.bu))
+    .sort((a,b)=>String(a.site).localeCompare(String(b.site), undefined, {numeric:true}));
+}
+const RS_OPEN = new Set();     // which rules have their site list open
+const RS_FIND = {};            // and what each one is filtered to
+function ruleStores(rl){
+  const wrap = el("div","rulestores");
+  const all = storesForRule(rl);
+  const gaps = all.filter(st=>!Object.keys(st.days||{}).length).length;
+  const open = RS_OPEN.has(rl.id);
+  const label = rl.m.grade ? "Grade "+esc(rl.m.grade)+" sites" : "Sites on this rule";
+
+  const head = el("div","rs-h"+(open?" open":""));
+  head.innerHTML = "<span class='cv'>&#9654;</span><span class='t'>"+label+"</span>"+
+    "<span class='c'>"+all.length+"</span>"+
+    (gaps ? "<span class='warn'>"+gaps+" with no cut-off day</span>" : "")+
+    "<span class='go'>"+(open?"hide":"show and edit")+"</span>";
+  head.onclick = ()=>{
+    open ? RS_OPEN.delete(rl.id) : RS_OPEN.add(rl.id);
+    renderRules();
+  };
+  wrap.appendChild(head);
+  if(!open) return wrap;
+
+  const body = el("div","rs-b");
+  if(!STORES.size){
+    body.innerHTML = "<div class='tiny'>No store master loaded yet. Use <b>Edit stores</b> on the board, or upload the cut-off file.</div>";
+    wrap.appendChild(body); return wrap;
+  }
+  const tools = el("div","storetools");
+  const find = document.createElement("input");
+  find.type = "search"; find.placeholder = "Find a site code or store name…";
+  find.value = RS_FIND[rl.id] || "";
+  tools.appendChild(find);
+  const add = el("button","btn ghost","+ Add a site");
+  add.type = "button";
+  add.onclick = e=>{
+    e.stopPropagation();
+    const code = (prompt("Site code for the new store?") || "").trim();
+    if(!code) return;
+    if(STORES.has(code)){ alert("Site "+code+" is already in the master."); return; }
+    // Born onto this rule, so it lands with the grade the rule selects on.
+    STORES.set(code, { site:code, grade:splitList(rl.m.grade)[0] || "", name:"", bu:"", cutoff:"", days:{} });
+    saveStores(); RS_FIND[rl.id] = code; renderRules(); recompute();
+  };
+  tools.appendChild(add);
+  body.appendChild(tools);
+
+  const q = (RS_FIND[rl.id] || "").trim().toLowerCase();
+  const list = q ? all.filter(st=>(st.site+" "+(st.name||"")+" "+(st.bu||"")).toLowerCase().includes(q)) : all;
+
+  const wrapT = el("div","stwrap");
+  const t = el("table","sttab");
+  t.innerHTML = "<thead><tr><th>Site</th><th>Store name</th><th>Cut-off</th>"+
+    DAY_ORDER.map(d=>"<th class='d'>"+d+"</th>").join("")+"<th></th></tr></thead>";
+  const tb = el("tbody");
+  if(!list.length){
+    tb.innerHTML = "<tr><td colspan='"+(4+DAY_ORDER.length)+"' style='text-align:center;padding:16px;color:var(--text-3)'>"+
+      (all.length ? "No site matches that." : "No site in the master carries this grade.")+"</td></tr>";
+  }
+  list.forEach(st=>{
+    const tr = el("tr", Object.keys(st.days||{}).length ? "" : "nodays");
+    tr.appendChild(stCell(st,"site","code site",70));
+    tr.appendChild(stCell(st,"name","",0));
+    tr.appendChild(stCell(st,"cutoff","code",64));
+    DAY_ORDER.forEach(d=>tr.appendChild(stDayCell(st,d)));
+    const x = el("td","x");
+    const rm = iconBtn("\u2715","Remove this site from the master",()=>{
+      if(!confirm("Remove site "+st.site+(st.name?" — "+st.name:"")+" from the store master?")) return;
+      STORES.delete(String(st.site)); saveStores(); renderRules(); recompute();
+    });
+    rm.className = "iconbtn danger";
+    x.appendChild(rm); tr.appendChild(x);
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb); wrapT.appendChild(t); body.appendChild(wrapT);
+  body.appendChild(hint("A weekday cell holds the code that site takes that day — "+
+    "C1, C3, or a plain time. Empty means no order that day, so the clock rolls to the next day it does. "+
+    "Edits save here and on the board's own store master at the same moment."));
+  wrap.appendChild(body);
+
+  // Re-rendering the whole rule list on each keystroke would take the caret with it.
+  find.oninput = ()=>{ RS_FIND[rl.id] = find.value; };
+  find.onchange = ()=>{ RS_FIND[rl.id] = find.value; renderRules(); };
+  find.onkeydown = e=>{ if(e.key === "Enter"){ RS_FIND[rl.id] = find.value; renderRules(); } };
+  return wrap;
 }
 function iconBtn(t,title,fn){ const b=el("button","iconbtn",t); b.type="button"; b.title=title; b.onclick=fn; return b; }
 function hint(t){ return el("span","fh",t); }
