@@ -248,6 +248,9 @@ tr.r-done td.doc,tr.r-done td.store .cd{opacity:.72}
 .p-done{background:var(--done-bg);color:var(--done);border-color:var(--done-line)}
 .chip{display:inline-block;padding:1px 6px;border-radius:3px;background:var(--surface-3);color:var(--text-2);font-size:10.5px;font-family:"IBM Plex Mono",monospace}
 .flag{display:inline-block;margin-left:5px;padding:1px 5px;border-radius:3px;background:var(--warn-bg);color:var(--warn);font-size:9.5px;font-family:Archivo,sans-serif;font-weight:600;cursor:help}
+/* Not a warning — a statement of which stamp the clock is actually running from. */
+.flag.alt{background:var(--surface-3);color:var(--text-3)}
+.flag.bad{background:var(--out-bg);color:var(--out)}
 
 .doneBtn{padding:3px 9px;border-radius:3px;border:1px solid var(--line);background:var(--surface);
   font-size:11px;font-weight:500;cursor:pointer;color:var(--text-2);white-space:nowrap}
@@ -1397,6 +1400,22 @@ function parseTimePart(v){
   if(ap==="am" && h===12) h=0;
   return h*3600+mi*60+se;
 }
+// A release stamp is only a stamp when both halves are there. A date on its own
+// would otherwise read as midnight, back-dating the document by most of a day and
+// sending it out of TAT on arrival. A genuine 00:00:00 parses as 0, not as missing,
+// so a real midnight release still counts.
+function releaseStamp(dateV, timeV, fmt){
+  const d = parseDatePart(dateV, fmt), t = parseTimePart(timeV);
+  return (d == null || t == null) ? null : combine(d, t);
+}
+// The creation stamp is the fallback of last resort, so a missing time there costs
+// the document its clock entirely. Take the date and say the time was assumed.
+function createdStamp(dateV, timeV, fmt){
+  const d = parseDatePart(dateV, fmt);
+  if(d == null) return { at:null, assumed:false };
+  const t = parseTimePart(timeV);
+  return { at:combine(d, t), assumed:t == null };
+}
 function combine(datePart, secs){
   if(!datePart) return null;
   return new Date(datePart[0], datePart[1], datePart[2], 0,0,0,0).getTime() + (secs==null?0:secs)*1000;
@@ -1645,13 +1664,15 @@ function loadSample(){
 function compute(){
   const cm = codeMap(), now = Date.now();
   return ORDERS.map((o,idx)=>{
-    const created  = combine(parseDatePart(o.createdOn,  CFG.dateFmt), parseTimePart(o.createdAt));
-    const released = combine(parseDatePart(o.releaseDate, CFG.dateFmt), parseTimePart(o.releaseTime));
-    let ref=null, refKind="";
-    if(CFG.refSrc === "created"){ ref=created; refKind="created"; }
+    const cs = createdStamp(o.createdOn, o.createdAt, CFG.dateFmt);
+    const created = cs.at;
+    const released = releaseStamp(o.releaseDate, o.releaseTime, CFG.dateFmt);
+    const assumed = cs.assumed ? " — no creation time in the file, midnight assumed" : "";
+    let ref=null, refKind="", onCreated=false;
+    if(CFG.refSrc === "created"){ ref=created; refKind="created"+assumed; onCreated=true; }
     else if(CFG.refSrc === "release"){ ref=released; refKind="released"; }
     else if(released!=null){ ref=released; refKind="released"; }
-    else { ref=created; refKind="created (not yet released)"; }
+    else { ref=created; refKind="created — no release stamp in the file"+assumed; onCreated=true; }
 
     const store = STORES.get(String(o.shipTo).trim());
     const rl = pickRule(o);
@@ -1668,7 +1689,7 @@ function compute(){
       shipTo:String(o.shipTo||""), shipToName:String(o.shipToName||"") || (store?store.name:""),
       scenario:String(o.scenario||""), grade:String(o.grade||"") || (store?store.grade:""),
       procType:String(o.procType||""), status:String(o.status||""),
-      created, released, ref, refKind, start, startNote, expected, remaining, tat,
+      created, released, ref, refKind, onCreated, start, startNote, expected, remaining, tat,
       ruleName: rl?rl.name:"no rule matched", ruleStart: rl?rl.start:"",
       grace: graceMins(),
       storeFound:!!store, needsStore: !!(rl && rl.start==="store"), fallback,
@@ -1927,7 +1948,9 @@ function render(){
   if(SRC.sample) addNotice(nz,"<b>Demo data.</b> Sixteen invented documents against twelve invented sites, and a placeholder set of rules &mdash; enough to show what the board does, and none of it real. Use <b>Upload</b> for your own extract, and <b>TAT logic &rsaquo; Import</b> for your own rules.");
   if(missStore) addNotice(nz,"<b>"+missStore+" document"+(missStore>1?"s":"")+"</b> need a store cut-off row that is not in the master, so the rule's fallback cut-off was used. Look for the <span class='flag'>fallback</span> flag.");
   if(noStart) addNotice(nz,"<b>"+noStart+" document"+(noStart>1?"s":"")+"</b> found no cut-off in the next 14 days &mdash; check the weekday columns for those stores.", true);
-  if(noRef) addNotice(nz,"<b>"+noRef+" document"+(noRef>1?"s":"")+"</b> have no usable date to start the clock from.", true);
+  if(noRef) addNotice(nz,"<b>"+noRef+" document"+(noRef>1?"s":"")+"</b> "+(noRef>1?"have":"has")+" no usable date to start the clock from, so "+(noRef>1?"they carry":"it carries")+" no TAT at all. Look for the <span class='flag bad'>no date</span> flag.", true);
+  const onCreated = ALL.filter(r=>r.onCreated && r.ref!=null).length;
+  if(onCreated && CFG.refSrc !== "created") addNotice(nz,"<b>"+onCreated+" of "+ALL.length+" documents</b> carry no release stamp, so their clock runs from the <b>creation</b> stamp instead &mdash; the <b>Released</b> column shows that stamp, flagged <span class='flag alt'>created</span>. Change which stamp is used under <b>Upload &rsaquo; Reading dates</b>.");
   if(noRule) addNotice(nz,"<b>"+noRule+" document"+(noRule>1?"s":"")+"</b> matched no rule. Add a catch-all rule at the bottom of the TAT logic.", true);
   // The commonest reason a fresh upload seems to change nothing: the extract says a
   // document is picked, and the board has been told to count hand marks only.
@@ -2150,7 +2173,11 @@ function renderTable(){
       "<td class='cat'>"+esc(rw.scenario)+"</td>"+
       "<td><span class='chip'>"+esc(rw.grade||"—")+"</span></td>"+
       "<td><span class='chip'>"+esc(rw.procType)+"</span></td>"+
-      "<td class='time'>"+fmtDT(rw.ref)+"</td>"+
+      "<td class='time'>"+(rw.ref==null
+          ? "<span class='flag bad' title='Neither a release stamp nor a creation stamp could be read for this document, so it has no clock at all'>no date</span>"
+          : fmtDT(rw.ref)+(rw.onCreated
+              ? "<span class='flag alt' title='No release stamp in the file, so the clock runs from the creation stamp'>created</span>"
+              : ""))+"</td>"+
       "<td class='time'>"+fmtDT(rw.start)+"</td>"+
       "<td class='num time'>"+rw.tat+"h</td>"+
       "<td class='time'>"+fmtDT(rw.expected)+"</td>"+
@@ -2183,6 +2210,10 @@ function renderTable(){
       const td = el("td"); td.colSpan = COLS.length+1;
       td.innerHTML = "<div class='trace'>"+
         step("Rule matched", rw.ruleName, "scenario "+(rw.scenario||"—")+" · grade "+(rw.grade||"—")+" · proc. type "+(rw.procType||"—"))+
+        step("Release stamp", rw.released==null ? "none in the file" : fmtDTFull(rw.released),
+             rw.released==null ? "release date or time was blank" : "read from Release Date and Release Time")+
+        step("Creation stamp", rw.created==null ? "none in the file" : fmtDTFull(rw.created),
+             "read from Created On and Created At")+
         step("Clock reference", fmtDTFull(rw.ref), "taken from "+rw.refKind)+
         step("Revised start", fmtDTFull(rw.start), rw.startNote||"—")+
         step("Cut-off grace", rw.ruleStart==="immediate" ? "not used on this rule" : rw.grace+" minutes",
