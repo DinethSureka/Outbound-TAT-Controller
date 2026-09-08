@@ -1039,6 +1039,9 @@ function rid(){ return "r"+Math.random().toString(36).slice(2,9); }
 function defaultConfig(){
   return {
     version: 5,
+    // Cleared by any imported rule file, so a board still on the delivered numbers
+    // can say so rather than looking authoritative.
+    placeholder: true,
     dateFmt:"DMY", refSrc:"releaseElseCreated",
     bandMode:"hrs", bands:{e1:1, e2:3, e3:6}, rowFill:true,
     alarmWhen:"out", alarmRepeat:0,
@@ -1054,38 +1057,50 @@ function defaultConfig(){
     clearDoneOnUpload:true,
     wall:{rows:9, pageSec:9, rotateDim:true, ticker:true, tickerSpeed:55, ambient:true, bu:"", scenario:"",
           groupOut:true, statuses:["out","h1","h3","h6","safe","done"]},
-    // Placeholder policy. These are illustrative numbers, not any operation's real
-    // TAT commitments — load your own under TAT logic › Import, which replaces every
-    // rule, band and code in one step and keeps them in this browser afterwards.
-    codes:[ {code:"M1", time:"10:00"}, {code:"M2", time:"18:00"} ],
+    // Placeholder policy. The shape is the one a picking operation actually needs —
+    // proc. type overriding the business scenario, a fixed cut-off for some, the
+    // store's own weekday calendar for others — but every hour and every cut-off time
+    // below is invented. Load the real thing under TAT logic › Import, which replaces
+    // each rule, band and code in one step and keeps them in this browser afterwards.
+    // Until that happens the board says so, on the board, in a notice.
+    codes:[ {code:"C1", time:"09:00"}, {code:"C3", time:"19:00"} ],
     rules:[
-      { id:rid(), on:true, name:"Express pick (proc. type 1001)",
-        m:{procType:"1001", scenario:"", grade:"", bu:""},
-        tat:4, start:"immediate", times:"", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
-      { id:rid(), on:true, name:"Long lead (proc. type 1009)",
-        m:{procType:"1009", scenario:"", grade:"", bu:""},
-        tat:72, start:"immediate", times:"", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
-      { id:rid(), on:true, name:"Wholesale",
-        m:{procType:"", scenario:"WHOLESALE", grade:"", bu:""},
-        tat:48, start:"cutoff", times:"09:00", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
-      { id:rid(), on:true, name:"Retail export",
-        m:{procType:"", scenario:"RETAIL-EXP", grade:"", bu:""},
-        tat:36, start:"cutoff", times:"12:00", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
-      { id:rid(), on:true, name:"Retail domestic — A grade",
-        m:{procType:"", scenario:"RETAIL-DOM", grade:"A", bu:""},
-        tat:8,  start:"immediate", times:"", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
-      { id:rid(), on:true, name:"Retail domestic — B grade",
-        m:{procType:"", scenario:"RETAIL-DOM", grade:"B", bu:""},
-        tat:24, start:"immediate", times:"", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
-      { id:rid(), on:true, name:"Retail domestic — C grade (store calendar)",
-        m:{procType:"", scenario:"RETAIL-DOM", grade:"C", bu:""},
-        tat:24, start:"store", times:"10:00", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
-      { id:rid(), on:true, name:"Retail domestic — D grade",
-        m:{procType:"", scenario:"RETAIL-DOM", grade:"D", bu:""},
-        tat:36, start:"immediate", times:"", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
+      // Proc. type decides on its own and takes no cut-off — it outranks the scenario.
+      { id:rid(), on:true, name:"Express pick — Whse proc. type 2016",
+        m:{procType:"2016", scenario:"", grade:"", bu:""},
+        tat:6, start:"immediate", times:"", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
+      { id:rid(), on:true, name:"Long lead — Whse proc. type 2012",
+        m:{procType:"2012", scenario:"", grade:"", bu:""},
+        tat:48, start:"immediate", times:"", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
+      // Wholesale: one cut-off a day.
+      { id:rid(), on:true, name:"Wholesale UAE",
+        m:{procType:"", scenario:"WHLUAE", grade:"", bu:""},
+        tat:12, start:"cutoff", times:"09:00", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
+      { id:rid(), on:true, name:"Wholesale GCC",
+        m:{procType:"", scenario:"WHLGCC", grade:"", bu:""},
+        tat:12, start:"cutoff", times:"09:00", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
+      { id:rid(), on:true, name:"Retail GCC",
+        m:{procType:"", scenario:"RETGCC", grade:"", bu:""},
+        tat:12, start:"cutoff", times:"14:00", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
+      // A grade takes the same two cut-offs everywhere, so it needs no store row.
+      { id:rid(), on:true, name:"Retail UAE — A grade",
+        m:{procType:"", scenario:"RETUAE", grade:"A", bu:""},
+        tat:4, start:"cutoff", times:"09:00,19:00", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
+      // B, C and D resolve at store-code level: the cut-off comes from that site's own
+      // weekday row in the store master. `times` is only the fallback for a site the
+      // master does not carry.
+      { id:rid(), on:true, name:"Retail UAE — B grade",
+        m:{procType:"", scenario:"RETUAE", grade:"B", bu:""},
+        tat:12, start:"store", times:"09:00,19:00", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
+      { id:rid(), on:true, name:"Retail UAE — C grade",
+        m:{procType:"", scenario:"RETUAE", grade:"C", bu:""},
+        tat:16, start:"store", times:"09:00,19:00", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
+      { id:rid(), on:true, name:"Retail UAE — D grade",
+        m:{procType:"", scenario:"RETUAE", grade:"D", bu:""},
+        tat:20, start:"store", times:"09:00,19:00", days:ALL_DAYS(), grace:30, storeSrc:"codes" },
       { id:rid(), on:true, name:"Everything else",
         m:{procType:"", scenario:"", grade:"", bu:""},
-        tat:24, start:"immediate", times:"", days:ALL_DAYS(), grace:30, storeSrc:"codes" }
+        tat:12, start:"immediate", times:"", days:ALL_DAYS(), grace:30, storeSrc:"codes" }
     ]
   };
 }
@@ -1422,38 +1437,49 @@ const expanded = new Set();
    rules that lands a spread across every status band. */
 const SAMPLE_ORDERS_RAW = [
   // hoursAgo, procType, doc, wave, bu, status, shipTo, shipToName, scenario, grade
-  [26,   "1005","9000004101","8000000450","RETAIL-A","Not Started",      "9001","DEMO-CENTRAL MALL",      "RETAIL-DOM","B"],
-  [5.5,  "1001","9000004102","8000000450","RETAIL-A","Partially Completed","9002","DEMO-HARBOUR PLAZA",  "RETAIL-DOM","B"],
-  [38,   "1005","9000004103","8000000451","RETAIL-B","Not Started",      "9003","DEMO-NORTHGATE CENTRE", "RETAIL-DOM","D"],
-  [23.4, "1005","9000004104","8000000451","RETAIL-A","Not Started",      "9004","DEMO-RIVERSIDE MALL",   "RETAIL-DOM","B"],
-  [7.5,  "1005","9000004105","8000000452","RETAIL-A","Partially Completed","9005","DEMO-AIRPORT ROAD",   "RETAIL-DOM","A"],
-  [22,   "1005","9000004106","8000000452","RETAIL-B","Not Started",      "9006","DEMO-LAKESIDE OUTLET",  "RETAIL-DOM","B"],
-  [6,    "1005","9000004107","8000000452","RETAIL-A","Not Started",      "9007","DEMO-MARKET SQUARE",    "RETAIL-DOM","A"],
-  [34.5, "1005","9000004108","8000000453","RETAIL-B","Not Started",      "9008","DEMO-WESTFIELD PARK",   "RETAIL-DOM","D"],
-  [19,   "1005","9000004109","8000000453","RETAIL-A","Not Started",      "9009","DEMO-GRAND BAZAAR",     "RETAIL-DOM","B"],
-  [3.5,  "1005","9000004110","8000000453","RETAIL-A","Not Started",      "9010","DEMO-STATION ARCADE",   "RETAIL-DOM","A"],
-  [32,   "1005","9000004111","8000000454","RETAIL-B","Not Started",      "9011","DEMO-SUNSET GALLERIA",  "RETAIL-DOM","D"],
-  [14,   "1005","9000004112","8000000454","RETAIL-B","Not Started",      "9012","DEMO-OLD TOWN STORE",   "RETAIL-DOM","C"],
-  [6,    "1005","9000004113","8000000455","WHOLESALE","Not Started",     "9002","DEMO-HARBOUR PLAZA",    "WHOLESALE", "B"],
-  [3,    "1005","9000004114","8000000455","RETAIL-B","Not Started",      "9008","DEMO-WESTFIELD PARK",   "RETAIL-EXP","B"],
-  [28,   "1005","9000004115","8000000449","RETAIL-A","Completed",        "9001","DEMO-CENTRAL MALL",     "RETAIL-DOM","B"],
-  [12,   "1005","9000004116","8000000449","RETAIL-A","Completed",        "9005","DEMO-AIRPORT ROAD",     "RETAIL-DOM","A"]
+  // Proc. type 2016 — express, 6h straight from the stamp: a clean spread of bands.
+  [7,    "2016","1099000401","6009000210","RETAIL-A", "Not Started",        "9001","DEMO-CENTRAL MALL",     "RETUAE","B"],
+  [5.5,  "2016","1099000402","6009000210","RETAIL-A", "Not Started",        "9004","DEMO-RIVERSIDE MALL",   "RETUAE","B"],
+  [4,    "2016","1099000403","6009000211","RETAIL-B", "Partially Completed","9003","DEMO-NORTHGATE CENTRE", "RETUAE","D"],
+  [1.5,  "2016","1099000404","6009000211","RETAIL-A", "Not Started",        "9007","DEMO-MARKET SQUARE",    "RETUAE","A"],
+  // Proc. type 2012 — long lead, 48h, and it outranks the scenario underneath it.
+  [50,   "2012","1099000405","6009000212","RETAIL-B", "Not Started",        "9008","DEMO-WESTFIELD PARK",   "RETGCC","C"],
+  [30,   "2012","1099000406","6009000212","RETAIL-A", "Not Started",        "9002","DEMO-HARBOUR PLAZA",    "RETUAE","B"],
+  [10,   "2012","1099000407","6009000213","WHL-A",    "Not Started",        "9013","DEMO GENERAL TRADING",  "WHLUAE","C"],
+  // Wholesale — one 09:00 cut-off a day, with half an hour of leeway past it.
+  [0.4,  "2010","1099000408","6009000214","WHL-A",    "Not Started",        "9013","DEMO GENERAL TRADING",  "WHLUAE","C"],
+  [26,   "2010","1099000409","6009000214","WHL-B",    "Not Started",        "9014","DEMO TRADING PARTNERS", "WHLGCC","C"],
+  // Retail GCC — one 14:00 cut-off a day.
+  [20,   "2010","1099000410","6009000215","RETAIL-B", "Not Started",        "9011","DEMO-SUNSET GALLERIA",  "RETGCC","C"],
+  // Retail UAE A — the same two cut-offs everywhere, no store row needed.
+  [3,    "2010","1099000411","6009000215","RETAIL-A", "Not Started",        "9005","DEMO-AIRPORT ROAD",     "RETUAE","A"],
+  // Retail UAE B/C/D — resolved at store-code level from the site's weekday row.
+  // 9010 takes orders on Sun, Tue and Thu only, so this one rolls forward.
+  [16,   "2010","1099000412","6009000216","RETAIL-A", "Not Started",        "9010","DEMO-STATION ARCADE",   "RETUAE","B"],
+  [9,    "2013","1099000413","6009000216","RETAIL-B", "Partially Completed","9012","DEMO-OLD TOWN STORE",   "RETUAE","C"],
+  [22,   "2010","1099000414","6009000217","RETAIL-B", "Not Started",        "9009","DEMO-GRAND BAZAAR",     "RETUAE","D"],
+  // Closed in the source extract, so the board counts them complete without a mark.
+  [28,   "2010","1099000415","6009000209","RETAIL-A", "Completed",          "9001","DEMO-CENTRAL MALL",     "RETUAE","B"],
+  [12,   "2016","1099000416","6009000209","RETAIL-A", "Completed",          "9005","DEMO-AIRPORT ROAD",     "RETUAE","A"]
 ];
 const SAMPLE_KEYS = ["hoursAgo","procType","doc","wave","bu","status","shipTo","shipToName","scenario","grade"];
 const SAMPLE_STORES_RAW = [
   // site, order cut-off, grade, bu, name, weekday cut-off codes
-  ["9001","18:00","B","RETAIL-A","DEMO-CENTRAL MALL",     {Sat:"M2",Sun:"M2",Mon:"M2",Tue:"M2",Wed:"M2",Thu:"M2",Fri:"M2"}],
-  ["9002","18:00","B","RETAIL-A","DEMO-HARBOUR PLAZA",    {Sat:"M2",Sun:"M2",Mon:"M2",Tue:"M2",Wed:"M2",Thu:"M2",Fri:"M2"}],
-  ["9003","10:00","D","RETAIL-B","DEMO-NORTHGATE CENTRE", {Sun:"M1",Tue:"M1",Thu:"M1",Fri:"M1"}],
-  ["9004","18:00","B","RETAIL-A","DEMO-RIVERSIDE MALL",   {Sat:"M2",Sun:"M2",Mon:"M2",Tue:"M2",Wed:"M2",Thu:"M2",Fri:"M2"}],
-  ["9005","10:00","A","RETAIL-A","DEMO-AIRPORT ROAD",     {Sat:"M1",Sun:"M1",Mon:"M1",Tue:"M1",Wed:"M1",Thu:"M1",Fri:"M1"}],
-  ["9006","18:00","B","RETAIL-B","DEMO-LAKESIDE OUTLET",  {Sun:"M2",Tue:"M2",Thu:"M2",Fri:"M2"}],
-  ["9007","10:00","A","RETAIL-A","DEMO-MARKET SQUARE",    {Sat:"M1",Sun:"M1",Mon:"M1",Tue:"M1",Wed:"M1",Thu:"M1",Fri:"M1"}],
-  ["9008","10:00","D","RETAIL-B","DEMO-WESTFIELD PARK",   {Sun:"M1",Mon:"M1",Wed:"M1",Thu:"M1",Fri:"M1"}],
-  ["9009","18:00","B","RETAIL-A","DEMO-GRAND BAZAAR",     {Sat:"M2",Sun:"M2",Mon:"M2",Tue:"M2",Wed:"M2",Thu:"M2",Fri:"M2"}],
-  ["9010","10:00","A","RETAIL-A","DEMO-STATION ARCADE",   {Sun:"M1",Tue:"M1",Thu:"M1",Fri:"M1"}],
-  ["9011","10:00","D","RETAIL-B","DEMO-SUNSET GALLERIA",  {Sun:"M1",Tue:"M1",Thu:"M1",Fri:"M1"}],
-  ["9012","18:00","C","RETAIL-B","DEMO-OLD TOWN STORE",   {Sat:"M2",Sun:"M2",Mon:"M2",Tue:"M2",Wed:"M2",Thu:"M2",Fri:"M2"}]
+  ["9001","19:00","B","RETAIL-A","DEMO-CENTRAL MALL",     {Sat:"C3",Sun:"C3",Mon:"C3",Tue:"C3",Wed:"C3",Thu:"C3",Fri:"C3"}],
+  ["9002","19:00","B","RETAIL-A","DEMO-HARBOUR PLAZA",    {Sat:"C3",Sun:"C3",Mon:"C3",Tue:"C3",Wed:"C3",Thu:"C3",Fri:"C3"}],
+  ["9003","09:00","D","RETAIL-B","DEMO-NORTHGATE CENTRE", {Sun:"C1",Tue:"C1",Thu:"C1",Fri:"C1"}],
+  ["9004","19:00","B","RETAIL-A","DEMO-RIVERSIDE MALL",   {Sat:"C3",Sun:"C3",Mon:"C3",Tue:"C3",Wed:"C3",Thu:"C3",Fri:"C3"}],
+  ["9005","09:00","A","RETAIL-A","DEMO-AIRPORT ROAD",     {Sat:"C1",Sun:"C1",Mon:"C1",Tue:"C1",Wed:"C1",Thu:"C1",Fri:"C1"}],
+  ["9006","19:00","B","RETAIL-B","DEMO-LAKESIDE OUTLET",  {Sun:"C3",Tue:"C3",Thu:"C3",Fri:"C3"}],
+  ["9007","09:00","A","RETAIL-A","DEMO-MARKET SQUARE",    {Sat:"C1",Sun:"C1",Mon:"C1",Tue:"C1",Wed:"C1",Thu:"C1",Fri:"C1"}],
+  ["9008","09:00","C","RETAIL-B","DEMO-WESTFIELD PARK",   {Sun:"C1",Mon:"C1",Wed:"C1",Thu:"C1",Fri:"C1"}],
+  ["9009","19:00","D","RETAIL-A","DEMO-GRAND BAZAAR",     {Sat:"C3",Sun:"C3",Mon:"C3",Tue:"C3",Wed:"C3",Thu:"C3",Fri:"C3"}],
+  // Sun / Tue / Thu only — a release on any other day rolls forward to the next one.
+  ["9010","09:00","B","RETAIL-A","DEMO-STATION ARCADE",   {Sun:"C1",Tue:"C1",Thu:"C1"}],
+  ["9011","09:00","C","RETAIL-B","DEMO-SUNSET GALLERIA",  {Sun:"C1",Tue:"C1",Thu:"C1",Fri:"C1"}],
+  ["9012","19:00","C","RETAIL-B","DEMO-OLD TOWN STORE",   {Sat:"C3",Sun:"C3",Mon:"C3",Tue:"C3",Wed:"C3",Thu:"C3",Fri:"C3"}],
+  ["9013","09:00","C","WHL-A",   "DEMO GENERAL TRADING",  {Sat:"C1",Sun:"C1",Mon:"C1",Tue:"C1",Wed:"C1",Thu:"C1",Fri:"C1"}],
+  ["9014","09:00","C","WHL-B",   "DEMO TRADING PARTNERS", {Sat:"C1",Sun:"C1",Mon:"C1",Tue:"C1",Wed:"C1",Thu:"C1",Fri:"C1"}]
 ];
 function loadSample(){
   const now = Date.now();
@@ -1473,7 +1499,7 @@ function loadSample(){
     const d={}; for(const k in days) d[k]={codes:[days[k]], active:true};
     STORES.set(String(site), {site:String(site), grade, name, bu, cutoff, days:d});
   });
-  SRC = { orders:"Demo — 16 documents", stores:"Demo — 12 sites", sample:true };
+  SRC = { orders:"Demo — 16 documents", stores:"Demo — 14 sites", sample:true };
 }
 
 /* ---------------------- compute ---------------------- */
@@ -1672,6 +1698,7 @@ function render(){
   const missStore = ALL.filter(r=>r.needsStore && !r.storeFound).length;
   const noRef = ALL.filter(r=>r.ref==null).length;
   const noStart = ALL.filter(r=>r.ref!=null && r.start==null).length;
+  if(CFG.placeholder) addNotice(nz,"<b>Placeholder rules.</b> Every TAT and cut-off time on this board is invented &mdash; the rule <i>shape</i> is right, the numbers are not. Load your own under <b>TAT logic &rsaquo; Import</b>, or set them by hand there; either clears this notice.", true);
   if(SRC.sample) addNotice(nz,"<b>Demo data.</b> Sixteen invented documents against twelve invented sites, and a placeholder set of rules &mdash; enough to show what the board does, and none of it real. Use <b>Upload</b> for your own extract, and <b>TAT logic &rsaquo; Import</b> for your own rules.");
   if(missStore) addNotice(nz,"<b>"+missStore+" document"+(missStore>1?"s":"")+"</b> need a store cut-off row that is not in the master, so the rule's fallback cut-off was used. Look for the <span class='flag'>fallback</span> flag.");
   if(noStart) addNotice(nz,"<b>"+noStart+" document"+(noStart>1?"s":"")+"</b> found no cut-off in the next 14 days &mdash; check the weekday columns for those stores.", true);
@@ -2169,7 +2196,8 @@ function numField(label,val,set,note){
   i.oninput = ()=>{ set(i.value===""?0:Number(i.value)); saveCfg(); recompute(); };
   l.appendChild(i); if(note) l.appendChild(hint(note)); return l;
 }
-function commit(){ saveCfg(); renderRules(); recompute(); }
+// Editing a rule by hand is just as much a statement of policy as importing one.
+function commit(){ CFG.placeholder = false; saveCfg(); renderRules(); recompute(); }
 
 function renderCodes(){
   const host = $("#codes"); host.innerHTML="";
@@ -3063,6 +3091,7 @@ $("#fileRules").onchange = e=>{
       const p = JSON.parse(ev.target.result);
       if(!p.rules || !Array.isArray(p.rules)) throw 0;
       CFG = migrate(Object.assign(defaultConfig(), p));
+      if(p.placeholder !== true) CFG.placeholder = false;
       saveCfg(); renderRules(); renderCodes(); syncLogicInputs(); syncSettingsInputs(); recompute();
     }catch(err){ alert("That file is not a TAT logic export."); }
   };
