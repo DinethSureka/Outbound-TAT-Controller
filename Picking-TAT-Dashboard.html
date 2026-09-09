@@ -101,6 +101,29 @@ button,select,input{font:inherit;color:inherit}
 .src.sample .tag{background:var(--warn-bg);color:var(--warn)}
 .hint{font-size:11.5px;color:var(--text-3)}
 .srcbar .spacer{margin-left:auto}
+.src .by{font-size:10.5px;color:var(--text-3);white-space:nowrap}
+.src .by b{color:var(--text-2);font-weight:600}
+.syncpill{display:flex;align-items:center;gap:6px;padding:4px 9px;border:1px solid var(--line-soft);border-radius:4px;
+  background:var(--surface-2);font-size:11px;color:var(--text-3);cursor:pointer;font-family:inherit}
+.syncpill i{width:7px;height:7px;border-radius:50%;background:var(--text-3);flex:none}
+.syncpill.live{color:var(--ok);border-color:var(--ok-line)}
+.syncpill.live i{background:var(--ok)}
+.syncpill.bad{color:var(--out);border-color:var(--out-line)}
+.syncpill.bad i{background:var(--out)}
+.syncpill.busy i{animation:syncPulse 1s ease-in-out infinite}
+@keyframes syncPulse{50%{opacity:.2}}
+.steps{font-size:11.5px;color:var(--text-2);line-height:1.7;padding-left:18px;margin:6px 0 0}
+.steps li{margin-bottom:6px}
+.steps code,.tiny code,.desc code{font-family:"IBM Plex Mono",monospace;background:var(--surface-3);padding:1px 4px;border-radius:2px;font-size:10.5px}
+.rules{font-family:"IBM Plex Mono",monospace;font-size:10.5px;line-height:1.55;background:var(--surface-2);
+  border:1px solid var(--line);border-radius:4px;padding:9px 11px;margin-top:8px;white-space:pre;overflow:auto;color:var(--text-2)}
+.whoscrim{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:90;display:none;align-items:center;justify-content:center;padding:20px}
+.whoscrim.on{display:flex}
+.whocard{background:var(--bg);border:1px solid var(--line);border-radius:8px;width:min(420px,100%);
+  padding:18px 18px 15px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+.whocard h3{font-size:13px;margin-bottom:5px}
+.whocard p{font-size:11.5px;color:var(--text-3);line-height:1.55;margin-bottom:12px}
+.whocard .row{display:flex;gap:8px;align-items:center;margin-top:13px}
 
 .notice{display:flex;gap:9px;align-items:flex-start;padding:9px 12px;margin-top:10px;border-radius:6px;
   background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--warn);font-size:12px}
@@ -658,9 +681,10 @@ tr.grouphead td{padding:0!important;background:var(--surface-2);border-bottom:1p
 
 <div class="wrap">
   <div class="srcbar">
-    <div class="src" id="srcOrders"><span class="tag">Orders</span><span class="nm">&mdash;</span></div>
-    <div class="src" id="srcStores"><span class="tag">Store cut-offs</span><span class="nm">&mdash;</span></div>
+    <div class="src" id="srcOrders"><span class="tag">Orders</span><span class="nm">&mdash;</span><span class="by" id="byOrders"></span></div>
+    <div class="src" id="srcStores"><span class="tag">Store cut-offs</span><span class="nm">&mdash;</span><span class="by" id="byStores"></span></div>
     <span class="hint spacer" id="calcHint"></span>
+    <button class="syncpill" id="syncPill" title="Share this board with the other screens"><i></i><span id="syncPillT">On this browser only</span></button>
     <button class="btn ghost" id="btnStores">Edit stores</button>
     <button class="btn ghost" id="btnUpload2">Replace files</button>
   </div>
@@ -714,7 +738,7 @@ tr.grouphead td{padding:0!important;background:var(--surface-2);border-bottom:1p
     <span class="sep">&middot;</span>
     <span>Developed by <b>Dineth Chandrasiri</b></span>
     <span class="sep">&middot;</span>
-    <span>9 September 2026</span>
+    <span>10 September 2026</span>
   </footer>
 </div>
 
@@ -758,7 +782,7 @@ tr.grouphead td{padding:0!important;background:var(--surface-2);border-bottom:1p
   </div>
   <div class="wall-foot">
     <span id="wData">&mdash;</span>
-    <span class="mid">Developed by Dineth Chandrasiri &middot; 9 September 2026</span>
+    <span class="mid">Developed by Dineth Chandrasiri &middot; 10 September 2026</span>
     <span id="wUpdated">&mdash;</span>
   </div>
 </div>
@@ -803,7 +827,82 @@ tr.grouphead td{padding:0!important;background:var(--surface-2);border-bottom:1p
       </div>
     </div>
   </div>
-  <div class="drawer-f"><button class="btn primary" data-close="U">Done</button><span class="hint">Files stay on this machine. What you load is kept on this browser, so a refresh comes back to the same board.</span></div>
+  <div class="drawer-f"><button class="btn primary" data-close="U">Done</button><span class="hint" id="uploadFoot"></span></div>
+</div>
+
+<!-- ============ SHARED BOARD ============ -->
+<div class="scrim" id="scrimY"></div>
+<div class="drawer" id="drawerY" role="dialog" aria-label="Shared board">
+  <div class="drawer-h"><h2>Shared board</h2><button class="btn ghost" data-close="Y">Close</button></div>
+  <div class="drawer-b">
+    <div class="sect">
+      <h3>Who is at this screen</h3>
+      <p class="desc">Stamped on whatever you upload or edit here, so the other screens can see who put the current picture up and when. Kept on this browser, and asked for once.</p>
+      <label class="f" style="max-width:320px"><span>Your name</span><input type="text" id="whoName" placeholder="e.g. Dinesh C" maxlength="40"></label>
+    </div>
+
+    <div class="sect">
+      <h3>Sharing</h3>
+      <p class="desc">Without this, each screen keeps its own copy: what you upload here is not seen anywhere else. Connected, the extract and the store master live in one place &mdash; whoever uploads writes it, and every other open board is handed the change and redraws itself. No refresh, no re-sending the file.</p>
+      <div class="tiny" id="syncStatus">&mdash;</div>
+      <div style="margin-top:11px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn primary" id="btnSyncConnect">Connect</button>
+        <button class="btn ghost" id="btnSyncOff">Stop sharing</button>
+        <button class="btn ghost" id="btnSyncPush">Send this board up now</button>
+      </div>
+      <div class="result" id="syncResult"></div>
+      <div class="tiny">A screen that loses the network keeps working on the data it already has, and catches up on its own when the connection comes back.</div>
+    </div>
+
+    <div class="sect">
+      <h3>Connection</h3>
+      <p class="desc">The first three come from the Firebase console &rsaquo; your project &rsaquo; <b>Project settings</b> &rsaquo; <b>Your apps</b> &rsaquo; the web app's <code>firebaseConfig</code>. The <b>board key</b> is yours to invent: it names this board inside the project, and it is the only thing keeping the data to your team &mdash; so make it long, and keep it off the internet.</p>
+      <div class="kv">
+        <label class="f"><span>Project ID</span><input type="text" id="syncProj" placeholder="picking-tat-4f21c" spellcheck="false" autocomplete="off"></label>
+        <label class="f"><span>Web API key</span><input type="text" id="syncKey" placeholder="AIzaSy&hellip;" spellcheck="false" autocomplete="off"></label>
+      </div>
+      <label class="f" style="margin-top:10px"><span>Board key</span><input type="text" class="wide" id="syncBoard" placeholder="a long private word" spellcheck="false" autocomplete="off"></label>
+      <div style="margin-top:11px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn ghost" id="btnSyncGen">Make me a board key</button>
+        <button class="btn ghost" id="btnSyncExport">Export connection file</button>
+        <button class="btn ghost" id="btnSyncImport">Import connection file</button>
+        <input type="file" id="fileSync" accept=".json">
+      </div>
+      <div class="tiny">Set one screen up, export the file to the shared drive, import it on the rest. It is kept on each browser afterwards, so a screen is set up once. <b>It is not in the published file</b> &mdash; the repository stays public and empty of it.</div>
+    </div>
+
+    <div class="sect">
+      <h3>Setting the project up &mdash; once, about five minutes</h3>
+      <ol class="steps">
+        <li>Go to <code>console.firebase.google.com</code> and <b>Create a project</b>. Any name. Turn Analytics off &mdash; it is not used here.</li>
+        <li><b>Build &rsaquo; Firestore Database &rsaquo; Create database</b>. Pick the region nearest the warehouse and start in <b>production mode</b>.</li>
+        <li>On the project's home screen press the <b>web</b> icon (<code>&lt;/&gt;</code>) to register an app. Any nickname, no hosting. Copy the <b>projectId</b> and <b>apiKey</b> it shows into the fields above.</li>
+        <li>In <b>Firestore &rsaquo; Rules</b>, replace what is there with this and press <b>Publish</b>:</li>
+      </ol>
+      <div class="rules">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /boards/{board}/{rest=**} {
+      allow read, write: if true;
+    }
+  }
+}</div>
+      <div class="tiny"><b>Read this before you publish those rules.</b> They put no login in front of the data: anyone who knows the project ID <i>and</i> your board key can read and write it. That is why the board key must be long and private &mdash; treat it like the key to a shared drive folder. The extract holds document numbers, stores and timings, so keep it to the team. If your operation needs more than that, the same board runs behind Firebase Authentication with a rule of <code>if request.auth != null</code>; say the word and it can be wired that way.</div>
+      <div class="tiny">Cost: a warehouse board uploading a few times a day sits inside Firebase's free Spark plan with room to spare. No card is needed to stay on it.</div>
+    </div>
+  </div>
+  <div class="drawer-f"><button class="btn primary" data-close="Y">Done</button><span class="hint">Connection details are kept on this browser only.</span></div>
+</div>
+
+<!-- ============ WHO ARE YOU ============ -->
+<div class="whoscrim" id="whoScrim">
+  <div class="whocard">
+    <h3>Who is uploading?</h3>
+    <p>Stamped on the data so the other screens know who put it up and when. Asked once &mdash; this browser remembers it afterwards, and you can change it under <b>Shared board</b>.</p>
+    <label class="f"><span>Your name</span><input type="text" id="whoInput" placeholder="e.g. Dinesh C" maxlength="40" autocomplete="off"></label>
+    <div class="row"><button class="btn primary" id="whoOk">Save</button><button class="btn ghost" id="whoSkip">Skip</button>
+      <span class="hint">Skipping stamps it as an unnamed screen.</span></div>
+  </div>
 </div>
 
 <!-- ============ TEAMS ============ -->
@@ -1194,6 +1293,36 @@ function migrate(c){
 }
 function saveCfg(){ try{ localStorage.setItem("pickTat.cfg.v4", JSON.stringify(CFG)); }catch(e){} }
 
+/* ---------------------- who put this up, and when ----------------------
+   A wall screen shows numbers nobody can question until they are wrong, and the
+   first question then is always the same: whose picture is this, and how old is it.
+   There is no login on a static page, so the name is asked for once at the first
+   upload and kept on that browser afterwards. */
+let WHO = "";
+try{ WHO = localStorage.getItem("pickTat.who") || ""; }catch(e){}
+function setWho(name){
+  WHO = String(name || "").trim().replace(/\s+/g," ").slice(0,40);
+  try{ WHO ? localStorage.setItem("pickTat.who", WHO) : localStorage.removeItem("pickTat.who"); }catch(e){}
+  const f = document.getElementById("whoName"); if(f && f.value !== WHO) f.value = WHO;
+}
+// Both halves of a stamp travel together: a time with no name says as little as a
+// name with no time. `at` is the moment the data was read, not the moment it was saved.
+let STAMP = { orders:{by:"", at:0}, stores:{by:"", at:0} };
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function whenLabel(ms){
+  const d = new Date(Number(ms) || 0);
+  if(!d.getTime()) return "";
+  const t = pad(d.getHours())+":"+pad(d.getMinutes());
+  const today = new Date(), y = new Date(today.getTime() - 86400000);
+  if(d.toDateString() === today.toDateString()) return t+" today";
+  if(d.toDateString() === y.toDateString())     return t+" yesterday";
+  return pad(d.getDate())+" "+MON[d.getMonth()]+", "+t;
+}
+function stampText(st){
+  if(!st || !st.at) return "";
+  return "by "+(st.by || "an unnamed screen")+" · "+whenLabel(st.at);
+}
+
 /* documents marked complete by hand: docNo -> ISO stamp */
 let DONE = loadDone();
 function loadDone(){
@@ -1237,13 +1366,14 @@ function saveOrders(){
   if(!ORDERS.length || SRC.sample){ try{ localStorage.removeItem("pickTat.orders.v1"); }catch(e){} return; }
   try{
     localStorage.setItem("pickTat.orders.v1", JSON.stringify(
-      { src:SRC.orders, at:LOADED_AT, rows:ordersToPlain() }));
+      { src:SRC.orders, at:LOADED_AT, by:STAMP.orders.by || "", rows:ordersToPlain() }));
   }catch(e){
     // Past the browser's quota. Keeping the board working on the data in hand beats
     // failing the upload — but say so, because a refresh will lose it.
     try{ localStorage.removeItem("pickTat.orders.v1"); }catch(e2){}
     ORDERS_UNSAVED = true;
   }
+  syncPush("orders");
 }
 function loadOrders(){
   try{
@@ -1253,7 +1383,7 @@ function loadOrders(){
     if(!p || !Array.isArray(p.rows) || !p.rows.length) return null;
     return { rows:ordersFromPlain(p.rows),
              src:p.src || (p.rows.length+" documents kept here"),
-             at:Number(p.at) || Date.now() };
+             at:Number(p.at) || Date.now(), by:p.by || "" };
   }catch(e){ return null; }
 }
 function forgetOrders(){
@@ -1290,8 +1420,12 @@ function storesFromPlain(sites){
   return m;
 }
 function saveStores(){
+  if(!SYNC.applying) STAMP.stores = { by:WHO, at:Date.now() };
+  paintStamps();
   try{ localStorage.setItem("pickTat.stores.v1",
-    JSON.stringify({ src:SRC.stores, sites:storesToPlain() })); }catch(e){}
+    JSON.stringify({ src:SRC.stores, by:STAMP.stores.by || "", at:STAMP.stores.at || 0,
+                     sites:storesToPlain() })); }catch(e){}
+  syncPush("stores");
 }
 function loadStores(){
   try{
@@ -1299,7 +1433,8 @@ function loadStores(){
     if(!raw) return null;
     const p = JSON.parse(raw);
     const m = storesFromPlain(p && p.sites);
-    return m.size ? { map:m, src:(p.src || m.size+" sites saved here") } : null;
+    return m.size ? { map:m, src:(p.src || m.size+" sites saved here"),
+                      by:p.by || "", at:Number(p.at) || 0 } : null;
   }catch(e){ return null; }
 }
 
@@ -1658,6 +1793,7 @@ function loadSample(){
     STORES.set(String(site), {site:String(site), grade, name, bu, cutoff, days:d});
   });
   SRC = { orders:"Demo — 16 documents", stores:"Demo — 14 sites", sample:true };
+  STAMP = { orders:{by:"", at:0}, stores:{by:"", at:0} };
 }
 
 /* ---------------------- compute ---------------------- */
@@ -1929,6 +2065,7 @@ function render(){
   so.querySelector(".nm").textContent = SRC.orders || "not loaded";
   ss.className = "src "+(SRC.stores ? (SRC.sample?"sample":"loaded") : "");
   ss.querySelector(".nm").textContent = SRC.stores || "not loaded";
+  paintStamps();
 
   fillMulti("#fScenario","scenario", tally("scenario"));
   fillMulti("#fBu","bu", tally("bu"));
@@ -2689,6 +2826,7 @@ function findTable(wb, dict, minHits){
   return best;
 }
 async function loadOrdersFile(file){
+  await askWho();
   const wb = await readWorkbook(file);
   const t = findTable(wb, ORDER_COLS, 5);
   if(!t) throw new Error("No sheet in that file has the expected picking columns (Document, Business Scenario, Created On…). Check the header row is intact.");
@@ -2703,6 +2841,7 @@ async function loadOrdersFile(file){
   SRC.orders = file.name+" — "+ORDERS.length+" documents";
   SRC.sample = false;
   LOADED_AT = Date.now();
+  STAMP.orders = { by:WHO, at:LOADED_AT };
   saveOrders();
   const missing = Object.keys(ORDER_COLS).filter(k=>t.map[k]===undefined);
   $("#ordersInfo").innerHTML = "Read <b>"+ORDERS.length+"</b> documents from sheet <code>"+esc(t.sheet)+"</code>."+
@@ -2711,6 +2850,7 @@ async function loadOrdersFile(file){
                     : " Kept on this browser, so a refresh keeps it.");
 }
 async function loadStoresFile(file){
+  await askWho();
   const wb = await readWorkbook(file);
   const t = findTable(wb, STORE_COLS, 2);
   if(!t) throw new Error("No sheet in that file has a Site Code column.");
@@ -2751,6 +2891,7 @@ async function loadStoresFile(file){
   });
   STORES = m;
   SRC.stores = file.name+" — "+m.size+" sites";
+  STAMP.stores = { by:WHO, at:Date.now() };
   saveStores();   // from here the master lives on this browser, editable in place
   const found = Object.keys(dayCols);
   const multi = found.filter(d=>dayCols[d].length>1);
@@ -3126,7 +3267,8 @@ function renderWall(){
   const age = Date.now() - LOADED_AT;
   const stale = age > 12*3600000 ? "vstale" : age > 4*3600000 ? "stale" : "";
   $("#wData").className = stale;
-  $("#wData").textContent = (SRC.sample ? "Sample data" : "Data loaded "+fmtAge(age)+" ago")+
+  $("#wData").textContent = (SRC.sample ? "Sample data"
+      : "Data loaded "+fmtAge(age)+" ago"+(STAMP.orders.by ? " by "+STAMP.orders.by : ""))+
     (stale ? " — re-upload the extract" : "");
   $("#wUpdated").textContent = W.length+(W.length!==ALL.length?" of "+ALL.length:"")+" documents · recalculated "+new Date().toLocaleTimeString();
 
@@ -3272,7 +3414,7 @@ $("#scrimS").onclick = ()=>closeDrawer("S");
 $("#scrimV").onclick = ()=>closeDrawer("V");
 $("#scrimL").onclick = ()=>closeDrawer("L");
 $("#scrimT").onclick = ()=>closeDrawer("T");
-document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ closeDrawer("U"); closeDrawer("L"); closeDrawer("T"); closeDrawer("S"); closeDrawer("V"); }});
+document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ closeDrawer("U"); closeDrawer("L"); closeDrawer("T"); closeDrawer("S"); closeDrawer("V"); closeDrawer("Y"); }});
 
 $("#btnTeams").onclick = ()=>{
   $("#teamsMsg").value = buildTeamsMessage();
@@ -3540,11 +3682,360 @@ function tickClock(){
 tickClock(); setInterval(tickClock, 1000);
 setInterval(recompute, 30000);
 
+
+/* ==================== who is at this screen ==================== */
+function paintStamps(){
+  const o = $("#byOrders"), t = $("#byStores");
+  if(!o || !t) return;
+  const so = SRC.sample ? "" : stampText(STAMP.orders);
+  const ss = SRC.sample ? "" : stampText(STAMP.stores);
+  o.innerHTML = so ? "&middot; " + esc(so) : "";
+  t.innerHTML = ss ? "&middot; " + esc(ss) : "";
+}
+// Asked once per screen, at the first upload. A name typed into a box is not proof of
+// anything - it is a label on the data so the floor knows whose picture it is looking
+// at, which is all the question ever means here.
+function askWho(){
+  return new Promise(resolve=>{
+    if(WHO) return resolve(WHO);
+    const sc = $("#whoScrim"), inp = $("#whoInput");
+    inp.value = "";
+    sc.classList.add("on");
+    setTimeout(()=>inp.focus(), 40);
+    const finish = keep=>{
+      sc.classList.remove("on");
+      inp.onkeydown = null;
+      if(keep) setWho(inp.value);
+      resolve(WHO);
+    };
+    $("#whoOk").onclick   = ()=>finish(true);
+    $("#whoSkip").onclick = ()=>finish(false);
+    inp.onkeydown = e=>{
+      if(e.key === "Enter"){ e.preventDefault(); finish(true); }
+      if(e.key === "Escape"){ e.preventDefault(); finish(false); }
+    };
+  });
+}
+
+/* ==================== the shared board ====================
+   The dashboard is a file, not a service, so two screens can only agree on what is
+   on them if the data itself lives somewhere both can reach. A Firestore project
+   holds one small document per board: whoever uploads writes it, and everyone else
+   is pushed the change and redraws - no refresh, no re-sending the file.
+
+   Nothing about the connection ships in this file. It is entered once per screen, or
+   imported from a small JSON kept on the shared drive, and kept in that browser
+   afterwards - so the published copy stays as public and as empty as it is now. */
+const FB_VER = "10.12.5";
+const SYNC = {
+  cfg:null,           // {projectId, apiKey, board}
+  db:null, appName:"",
+  state:"off",        // off | connecting | live | error
+  msg:"Not shared \u2014 what you load here stays on this browser.",
+  applying:false,     // a change from another screen is being written in
+  busy:0,
+  rev:{orders:"", stores:""},
+  unsub:[]
+};
+function loadSyncCfg(){
+  try{
+    const raw = localStorage.getItem("pickTat.sync.v1");
+    if(raw){ const p = JSON.parse(raw); if(p && p.projectId && p.apiKey && p.board) return p; }
+  }catch(e){}
+  return null;
+}
+function saveSyncCfg(c){
+  try{ c ? localStorage.setItem("pickTat.sync.v1", JSON.stringify(c))
+         : localStorage.removeItem("pickTat.sync.v1"); }catch(e){}
+}
+function loadScript(src){
+  return new Promise((res, rej)=>{
+    const el = document.createElement("script");
+    el.src = src; el.async = true;
+    el.onload = ()=>res();
+    el.onerror = ()=>rej(new Error("could not load the Firebase library. Check this screen can reach www.gstatic.com."));
+    document.head.appendChild(el);
+  });
+}
+let fbLoad = null;
+function loadFirebase(){
+  if(window.firebase && window.firebase.firestore) return Promise.resolve();
+  if(!fbLoad) fbLoad = loadScript("https://www.gstatic.com/firebasejs/"+FB_VER+"/firebase-app-compat.js")
+    .then(()=>loadScript("https://www.gstatic.com/firebasejs/"+FB_VER+"/firebase-firestore-compat.js"))
+    .catch(e=>{ fbLoad = null; throw e; });
+  return fbLoad;
+}
+
+function syncSet(state, msg){ SYNC.state = state; if(msg != null) SYNC.msg = msg; paintSync(); }
+function syncBusy(on){ SYNC.busy = Math.max(0, SYNC.busy + (on ? 1 : -1)); paintSync(); }
+function syncFail(err){
+  const m = (err && err.message) || String(err || "");
+  syncSet("error", /permission|insufficient/i.test(m)
+    ? "refused by the project's rules. Publish the rules shown in this panel, and check the board key."
+    : "not reaching the shared board \u2014 " + m);
+}
+function paintSync(){
+  const pill = $("#syncPill"), lbl = $("#syncPillT");
+  if(!pill) return;
+  const cls = SYNC.state === "live" ? "live" : SYNC.state === "error" ? "bad" : "";
+  pill.className = "syncpill " + cls + (SYNC.busy || SYNC.state === "connecting" ? " busy" : "");
+  lbl.textContent = SYNC.state === "live" ? (SYNC.busy ? "Sharing\u2026" : "Shared \u00b7 live")
+                  : SYNC.state === "connecting" ? "Connecting\u2026"
+                  : SYNC.state === "error" ? "Sharing failed"
+                  : "On this browser only";
+  pill.title = SYNC.msg;
+  const st = $("#syncStatus");
+  if(st) st.innerHTML = "<b>" + esc(
+      SYNC.state === "live" ? "Live" : SYNC.state === "connecting" ? "Connecting" :
+      SYNC.state === "error" ? "Not connected" : "Off") + "</b> &mdash; " + esc(SYNC.msg);
+  const uf = $("#uploadFoot");
+  if(uf) uf.textContent = SYNC.state === "live"
+    ? "Read on this machine, then shared with the other screens \u2014 they pick it up without a refresh."
+    : "Files stay on this machine. What you load is kept on this browser, so a refresh comes back to the same board.";
+}
+function syncResult(msg, ok){
+  const r = $("#syncResult"); if(!r) return;
+  r.className = "result " + (ok ? "ok" : "bad");
+  r.textContent = msg;
+}
+
+function syncStop(quiet){
+  SYNC.unsub.forEach(u=>{ try{ u(); }catch(e){} });
+  SYNC.unsub = [];
+  SYNC.db = null;
+  SYNC.rev = {orders:"", stores:""};
+  SYNC.busy = 0;
+  if(!quiet) syncSet("off", "Not shared \u2014 what you load here stays on this browser.");
+}
+
+async function syncConnect(cfg){
+  syncStop(true);
+  SYNC.cfg = cfg;
+  syncSet("connecting", "reaching the project\u2026");
+  try{
+    await loadFirebase();
+    SYNC.appName = "tat" + Date.now();
+    const app = firebase.initializeApp(
+      { apiKey:cfg.apiKey, projectId:cfg.projectId, authDomain:cfg.projectId + ".firebaseapp.com" },
+      SYNC.appName);
+    SYNC.db = app.firestore();
+    // Warehouse networks sit behind proxies that break the streaming channel; letting
+    // the client find that out for itself beats a board that silently never updates.
+    try{ SYNC.db.settings({ experimentalAutoDetectLongPolling:true, merge:true }); }catch(e){}
+    const base = syncBase();
+    SYNC.unsub.push(base.collection("state").doc("orders")
+      .onSnapshot(d=>onRemote("orders", d), e=>syncFail(e)));
+    SYNC.unsub.push(base.collection("state").doc("stores")
+      .onSnapshot(d=>onRemote("stores", d), e=>syncFail(e)));
+    syncSet("live", "sharing board \u201c" + cfg.board.slice(0,6) + "\u2026\u201d in " + cfg.projectId + ".");
+    // An empty board takes whatever this screen already has, so the first person to
+    // connect seeds it rather than everyone staring at nothing.
+    setTimeout(seedIfEmpty, 2000);
+    return true;
+  }catch(e){ syncFail(e); return false; }
+}
+function syncBase(){ return SYNC.db.collection("boards").doc(SYNC.cfg.board); }
+
+async function seedIfEmpty(){
+  if(SYNC.state !== "live" || !SYNC.db) return;
+  try{
+    if(!SRC.sample && ORDERS.length && !SYNC.rev.orders) await pushDoc("orders");
+    if(STORES.size && STAMP.stores.at && !SYNC.rev.stores) await pushDoc("stores");
+  }catch(e){}
+}
+
+/* Firestore documents cap at a megabyte and will not hold an array of arrays, so the
+   rows travel as JSON text split across as many parts as it takes. The parts are
+   written first and the pointer last, so nobody is ever handed half an extract. */
+const PART_MAX = 600000;
+function jsonParts(rows){
+  const out = []; let cur = [], len = 2;
+  for(const r of rows){
+    const t = JSON.stringify(r);
+    if(cur.length && len + t.length + 1 > PART_MAX){ out.push(JSON.stringify(cur)); cur = []; len = 2; }
+    cur.push(r); len += t.length + 1;
+  }
+  if(cur.length) out.push(JSON.stringify(cur));
+  return out.length ? out : ["[]"];
+}
+const newRev = ()=> String(Date.now()) + "-" + Math.random().toString(36).slice(2,8);
+
+const pushQueued = {orders:false, stores:false};
+// Editing the store master fires a save on every keystroke; the board only needs the
+// state it settles on, so a push waits a moment and the last one wins.
+function syncPush(kind){
+  if(SYNC.state !== "live" || !SYNC.db || SYNC.applying) return;
+  if(kind === "orders" && (SRC.sample || !ORDERS.length)) return;
+  if(pushQueued[kind]) return;
+  pushQueued[kind] = true;
+  setTimeout(()=>{ pushQueued[kind] = false; pushDoc(kind).catch(e=>syncFail(e)); }, 900);
+}
+
+async function pushDoc(kind){
+  if(SYNC.state !== "live" || !SYNC.db) return;
+  const base = syncBase(), meta = base.collection("state").doc(kind);
+  const rev = newRev(), st = STAMP[kind];
+  syncBusy(true);
+  try{
+    if(kind === "orders"){
+      const rows = ordersToPlain();
+      const parts = jsonParts(rows);
+      let had = 0;
+      try{ const cur = await meta.get(); had = (cur.exists && Number(cur.data().parts)) || 0; }catch(e){}
+      await Promise.all(parts.map((p,i)=>base.collection("orderParts").doc("p"+i).set({rev, i, data:p})));
+      for(let i = parts.length; i < had; i++){
+        try{ await base.collection("orderParts").doc("p"+i).delete(); }catch(e){}
+      }
+      SYNC.rev.orders = rev;
+      await meta.set({ rev, by:st.by || "", at:st.at || Date.now(), src:SRC.orders || "",
+                       n:rows.length, parts:parts.length });
+      syncResult("Sent " + rows.length + " documents to the shared board.", true);
+    }else{
+      SYNC.rev.stores = rev;
+      await meta.set({ rev, by:st.by || "", at:st.at || Date.now(), src:SRC.stores || "",
+                       n:STORES.size, data:JSON.stringify(storesToPlain()) });
+      syncResult("Sent " + STORES.size + " sites to the shared board.", true);
+    }
+    if(SYNC.state === "live") syncSet("live", "sharing board \u201c" + SYNC.cfg.board.slice(0,6) +
+      "\u2026\u201d \u00b7 last sent " + whenLabel(Date.now()) + ".");
+  }catch(e){
+    SYNC.rev[kind] = "";
+    syncFail(e); syncResult("Could not send: " + ((e && e.message) || e), false);
+  }finally{ syncBusy(false); }
+}
+
+async function onRemote(kind, snap){
+  if(!snap || !snap.exists) return;
+  const m = snap.data() || {};
+  if(!m.rev || m.rev === SYNC.rev[kind]) return;          // our own write, or nothing new
+  const mine = STAMP[kind];
+  // A refresh re-reads what this screen already had. Same name, same moment: adopt the
+  // revision quietly rather than tearing the board down and rebuilding it identically.
+  if(Number(m.at) === Number(mine.at) && (m.by || "") === (mine.by || "")){
+    SYNC.rev[kind] = m.rev; return;
+  }
+  syncBusy(true);
+  try{
+    if(kind === "orders") await applyRemoteOrders(m);
+    else                  applyRemoteStores(m);
+    SYNC.rev[kind] = m.rev;
+  }catch(e){
+    syncSet("error", "a change arrived but could not be read \u2014 " + ((e && e.message) || e));
+  }finally{ syncBusy(false); SYNC.applying = false; }
+}
+
+async function applyRemoteOrders(m){
+  const base = syncBase(), parts = [];
+  for(let i = 0; i < Number(m.parts || 0); i++){
+    const d = await base.collection("orderParts").doc("p" + i).get();
+    if(!d.exists || d.data().rev !== m.rev)
+      throw new Error("the extract was still being sent; it will arrive in a moment");
+    parts.push(d.data().data);
+  }
+  const rows = [];
+  parts.forEach(p=>JSON.parse(p).forEach(r=>rows.push(r)));
+  const kept = new Map(DONE);
+  SYNC.applying = true;
+  ORDERS = ordersFromPlain(rows);
+  SRC.orders = m.src || (rows.length + " documents");
+  SRC.sample = false;
+  STAMP.orders = { by:m.by || "", at:Number(m.at) || Date.now() };
+  LOADED_AT = STAMP.orders.at;
+  saveOrders();                 // kept here too, so a refresh comes straight back to it
+  SYNC.applying = false;
+  resetBoard();
+  const cleared = CFG.clearDoneOnUpload !== false ? kept.size : 0;
+  if(cleared){ DONE.clear(); saveDone(); }
+  recompute();
+  dataToast((m.by ? "From " + m.by + " \u2014 " : "") + (m.src || rows.length + " documents"), cleared, kept);
+}
+
+function applyRemoteStores(m){
+  const map = storesFromPlain(JSON.parse(m.data || "{}"));
+  if(!map.size) return;
+  SYNC.applying = true;
+  STORES = map;
+  SRC.stores = m.src || (map.size + " sites");
+  STAMP.stores = { by:m.by || "", at:Number(m.at) || Date.now() };
+  saveStores();
+  SYNC.applying = false;
+  if($("#drawerV").classList.contains("on")) renderStores();
+  recompute();
+}
+
+/* ---- the shared-board panel ---- */
+function syncFormFill(){
+  const c = SYNC.cfg || loadSyncCfg() || {};
+  $("#syncProj").value  = c.projectId || "";
+  $("#syncKey").value   = c.apiKey    || "";
+  $("#syncBoard").value = c.board     || "";
+  $("#whoName").value   = WHO;
+  paintSync();
+}
+function syncFormRead(){
+  return { projectId:$("#syncProj").value.trim(),
+           apiKey:$("#syncKey").value.trim(),
+           board:$("#syncBoard").value.trim() };
+}
+$("#syncPill").onclick = ()=>{ syncFormFill(); $("#syncResult").className = "result"; openDrawer("Y"); };
+$("#whoName").oninput = e=>{ setWho(e.target.value); paintStamps(); };
+$("#btnSyncGen").onclick = ()=>{
+  const a = new Uint8Array(16);
+  if(window.crypto && crypto.getRandomValues) crypto.getRandomValues(a);
+  else for(let i=0;i<a.length;i++) a[i] = Math.floor(Math.random()*256);
+  $("#syncBoard").value = "picking-" + [...a].map(x=>("0" + x.toString(16)).slice(-2)).join("");
+};
+$("#btnSyncConnect").onclick = async ()=>{
+  const c = syncFormRead();
+  if(!c.projectId || !c.apiKey || !c.board)
+    return syncResult("All three are needed \u2014 project ID, API key and board key.", false);
+  syncResult("Connecting\u2026", true);
+  const ok = await syncConnect(c);
+  if(ok){ saveSyncCfg(c); syncResult("Connected. This screen now follows the shared board.", true); }
+  else syncResult("Could not connect \u2014 " + SYNC.msg, false);
+};
+$("#btnSyncOff").onclick = ()=>{
+  syncStop(); saveSyncCfg(null); SYNC.cfg = null;
+  syncResult("Stopped. This screen is back to its own copy \u2014 nothing was deleted from the project.", true);
+};
+$("#btnSyncPush").onclick = async ()=>{
+  if(SYNC.state !== "live") return syncResult("Connect first.", false);
+  await askWho();
+  if(!SRC.sample && ORDERS.length){ STAMP.orders = { by:WHO, at:Date.now() }; await pushDoc("orders"); }
+  if(STORES.size){ STAMP.stores = { by:WHO, at:Date.now() }; await pushDoc("stores"); }
+  paintStamps();
+};
+$("#btnSyncExport").onclick = ()=>{
+  const c = syncFormRead();
+  if(!c.projectId || !c.board) return syncResult("Fill the connection in first.", false);
+  download(new Blob([JSON.stringify(c, null, 2)], {type:"application/json"}), "tat-shared-board.json");
+};
+$("#btnSyncImport").onclick = ()=>$("#fileSync").click();
+$("#fileSync").onchange = e=>{
+  const f = e.target.files[0]; e.target.value = "";
+  if(!f) return;
+  const fr = new FileReader();
+  fr.onload = async ev=>{
+    try{
+      const p = JSON.parse(ev.target.result);
+      if(!p || !p.projectId || !p.apiKey || !p.board) throw 0;
+      $("#syncProj").value = p.projectId; $("#syncKey").value = p.apiKey; $("#syncBoard").value = p.board;
+      const ok = await syncConnect(p);
+      if(ok){ saveSyncCfg(p); syncResult("Connected from " + f.name + ".", true); }
+      else syncResult("Could not connect \u2014 " + SYNC.msg, false);
+    }catch(err){ syncResult("That file is not a connection export.", false); }
+  };
+  fr.readAsText(f);
+};
+$("#scrimY").onclick = ()=>closeDrawer("Y");
+
+
 loadSample();
 // A master that was uploaded or edited here takes over from the demo sites, so a
 // screen set up once comes back ready rather than asking for the file again.
 const savedStores = loadStores();
-if(savedStores){ STORES = savedStores.map; SRC.stores = savedStores.src; }
+if(savedStores){ STORES = savedStores.map; SRC.stores = savedStores.src;
+                 STAMP.stores = { by:savedStores.by, at:savedStores.at }; }
 // And the extract likewise: a refresh should come back to the same board, not to
 // demo data with the real numbers quietly gone.
 const savedOrders = loadOrders();
@@ -3553,6 +4044,11 @@ if(savedOrders){
   SRC.orders = savedOrders.src;
   SRC.sample = false;
   LOADED_AT = savedOrders.at;
+  STAMP.orders = { by:savedOrders.by, at:savedOrders.at };
 }
 recompute();
+paintSync();
+// A screen that was sharing yesterday is sharing this morning, without being asked.
+const savedSync = loadSyncCfg();
+if(savedSync) syncConnect(savedSync);
 </script>

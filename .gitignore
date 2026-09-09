@@ -14,3 +14,8 @@ desktop.ini
 # Your real TAT policy — rules, bands and cut-off codes. Exported from the board
 # and imported back on each screen; it is operational policy, not code.
 picking-tat-logic.json
+
+# The shared-board connection. The board key in here is the only lock on the data,
+# so it belongs on the shared drive, never in a public repository.
+tat-shared-board.json
+store-master*.json
