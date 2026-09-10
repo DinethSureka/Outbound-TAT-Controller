@@ -2807,7 +2807,11 @@ function readWorkbook(file){
     const fr = new FileReader();
     fr.onerror = ()=>rej(new Error("Could not read the file."));
     fr.onload = e=>{
-      try{ res(XLSX.read(new Uint8Array(e.target.result), {type:"array", cellDates:true})); }
+      // cellDates is deliberately off. Asked for dates, the reader converts the serial
+      // through a float epoch and lands a few seconds short of midnight — 46272 comes
+      // back as 23:59:48 on the 6th rather than 00:00:00 on the 7th, and every stamp
+      // reads a day early. The serial itself is exact, so the board converts it.
+      try{ res(XLSX.read(new Uint8Array(e.target.result), {type:"array", cellDates:false})); }
       catch(err){ rej(new Error("That does not look like a readable Excel or CSV file.")); }
     };
     fr.readAsArrayBuffer(file);
